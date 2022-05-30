@@ -1,0 +1,11 @@
+{
+  "name": "pw",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@polkadot/api": "^7.13.1",
+    "dotenv": "^16.0.0",
+    "p-sleep": "^1.1.0"
+  }
+}
