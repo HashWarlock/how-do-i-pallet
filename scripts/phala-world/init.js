@@ -81,17 +81,7 @@ async function main() {
             .signAndSend(overlord, {nonce: nonceOverlord++});
         await waitTxAccepted(overlord.address, nonceOverlord - 1);
         console.log("Initialize Phala World Clock...Done");
-        console.log("Set ClaimSpirits status to true...");
-        // available states:
-        // ClaimSpirits,
-        // PurchaseRareOriginOfShells,
-        // PurchasePrimeOriginOfShells,
-        // PreorderOriginOfShells,
-        await api.tx.pwNftSale.setStatusType(true, 'ClaimSpirits')
-            .signAndSend(overlord, {nonce: nonceOverlord++});
-        await waitTxAccepted(overlord.address, nonceOverlord - 1);
-        console.log("Set ClaimSpirits Status to true...Done");
-        console.log("Create Spirits and Origin of Shell Collections...");
+        console.log("Create Spirits, Origin of Shells & Shells Collections...");
         // mint spirits NFTs with overlord
         // collection 0: spirits
         await api.tx.pwNftSale.pwCreateCollection(
@@ -129,6 +119,16 @@ async function main() {
         await api.tx.pwNftSale.initOriginOfShellTypeCounts()
             .signAndSend(overlord, {nonce: nonceOverlord++});
         console.log("Initialize Origin of Shell NFT sale inventory...Done");
+        console.log("Set ClaimSpirits status to true...");
+        // available states:
+        // ClaimSpirits,
+        // PurchaseRareOriginOfShells,
+        // PurchasePrimeOriginOfShells,
+        // PreorderOriginOfShells,
+        await api.tx.pwNftSale.setStatusType(true, 'ClaimSpirits')
+            .signAndSend(overlord, {nonce: nonceOverlord++});
+        await waitTxAccepted(overlord.address, nonceOverlord - 1);
+        console.log("Set ClaimSpirits Status to true...Done");
     }
 }
 
