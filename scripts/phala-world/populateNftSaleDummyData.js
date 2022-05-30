@@ -108,6 +108,14 @@ async function main() {
         console.log(`Claiming Spirits Done.`);
     }
 
+    // Set Origin of Shells Metadata
+    {
+        console.log(`Set Origin of Shells Metadata...`);
+        await api.tx.pwNftSale.setOriginOfShellsMetadata([['Cyborg', 'Cyborg Metadata'], ['AISpectre', 'AISpectre Metadata'], ['Pandroid', 'Pandroid Metadata'], ['XGene', 'XGene Metadata']]).signAndSend(overlord, {nonce: nonceOverlord++});
+        await waitTxAccepted(overlord.address, nonceOverlord - 1);
+        console.log(`Set Origin of Shells Metadata...Done`);
+    }
+
     // Buy Rare Origin of Shell NFTs (alice, bob, charlie, david)
     {
         console.log(`Purchase Rare Origin of Shells...`);
