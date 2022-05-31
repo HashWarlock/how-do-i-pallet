@@ -289,22 +289,26 @@ async function main() {
         })
     }
 
-    // Query the Origin of Shell Stats
+    // Query the Origin of Shell Stats in Current Era, Sort the results and print top 10
     {
         const currentEra = await api.query.pwNftSale.era();
         console.log(`Current Era: ${currentEra}`);
         // Times fed in era 0 for the [collectionId, nftId], era
-        const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats.entries();
-        originOfShellFoodStats
-            .map(([key, value]) =>
-                [key.args[0].toHuman(), key.args[1].toNumber(), value.toNumber()]
-            ).forEach(([collectionIdNftId, era, value]) => {
-            console.log({
-                collectionIdNftId,
-                era,
-                value,
-            })
-        })
+        const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats.entries(currentEra.toNumber());
+
+        const sortedOriginOfShellStats = originOfShellFoodStats
+            .map(([key, value]) => {
+                    const eraId = key.args[0].toNumber()
+                    const collectionIdNftId = key.args[1].toHuman()
+                    const numTimesFed = value.toNumber()
+                    return {
+                        eraId,
+                        collectionIdNftId,
+                        numTimesFed
+                    }
+                }
+            ).sort((a, b) => b.numTimesFed - a.numTimesFed);
+        console.log(sortedOriginOfShellStats.slice(0,10));
     }
 }
 
