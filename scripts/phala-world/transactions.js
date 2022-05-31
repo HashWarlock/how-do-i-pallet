@@ -208,4 +208,35 @@ async function main() {
         await api.tx.pwIncubation.hatchOriginOfShell(ferdie.address, 1, 0, metadata).signAndSend(overlord);
     }
 
+    // Query an Era's fed Origin of Shells, Generate top 10 fed, reduce top 10 Origin of Shells hatch times in seconds
+    {
+        const currentEra = await api.query.pwNftSale.era();
+        console.log(`Current Era: ${currentEra}`);
+        // Times fed in era 0 for the [collectionId, nftId], era
+        const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats.entries(currentEra.toNumber());
+
+        const sortedOriginOfShellStats = originOfShellFoodStats
+            .map(([key, value]) => {
+                    const eraId = key.args[0].toNumber()
+                    const collectionIdNftId = key.args[1].toHuman()
+                    const numTimesFed = value.toNumber()
+                    return {
+                        eraId: eraId,
+                        collectionIdNftId: collectionIdNftId,
+                        numTimesFed: numTimesFed
+                    }
+                }
+            ).sort((a, b) => b.numTimesFed - a.numTimesFed);
+        console.log(sortedOriginOfShellStats.slice(0,10));
+        let reduceHatchTimeSeconds = [10800, 7200, 3600, 2400, 1400, 1400, 1400, 1400, 1400, 1400]
+        let topTenFed = [];
+        let i = 0;
+        for (const nftStats in sortedOriginOfShellStats) {
+            topTenFed[i] = api.createType('((u32, u32), u64)', [sortedOriginOfShellStats[nftStats].collectionIdNftId, reduceHatchTimeSeconds[i]]);
+            i++
+        }
+        console.log(topTenFed.toString());
+        await api.tx.pwIncubation.updateIncubationTime(topTenFed).signAndSend(overlord, { nonce: nonceOverlord++ });
+    }
+
 }
