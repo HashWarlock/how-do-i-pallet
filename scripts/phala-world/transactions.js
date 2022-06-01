@@ -177,7 +177,8 @@ async function main() {
     // This is called AFTER the Whitelist Sale is complete. Must Disable Whitelist sale before updating to ensure numbers
     // do not fluctuate.
     {
-        await api.tx.pwNftSale.updateOriginOfShellTypeCounts('Prime', 900, 50).signAndSend(overlord);
+        await api.tx.pwNftSale.updateOriginOfShellTypeCounts('Prime', 900, 50)
+            .signAndSend(overlord);
     }
 
     // Enable Incubation process and start the incubation phase
@@ -195,6 +196,14 @@ async function main() {
     {
         const originOfShells = api.createType('Vec<((u32,u32), u64)>', [[[1, 1], 10800], [[1,0], 7200], [[1, 3], 3600], [[1,2], 2400], [[1, 0], 2400], [[1, 4], 1400], [[1, 5], 1400], [[1, 8], 1400], [[1, 10], 1400]]);
         await api.tx.pwIncubation.updateIncubationTime(originOfShells).signAndSend(overlord);
+    }
+
+    // Mint a gift NFT of either NftSaleType of Giveaway or Reserved
+    {
+        await api.tx.pwNftSale.mintGiftOriginOfShell(ferdie.address, 'Prime', 'Cyborg', 'HackerWizard', 'Giveaway')
+            .signAndSend(overlord);
+        await api.tx.pwNftSale.mintGiftOriginOfShell(charlie.address, 'Legendary', 'AISpectre', 'Web3Monk', 'Reserved')
+            .signAndSend(overlord);
     }
 
     // Hatch origin of shell executed by Overlord

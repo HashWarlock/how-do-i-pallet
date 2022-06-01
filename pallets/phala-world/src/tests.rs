@@ -47,21 +47,13 @@ fn metadata_accounts(
 
 fn mint_collection(account: AccountId32) {
 	// Mint Spirits collection
-	RmrkCore::create_collection(
-		Origin::signed(account),
-		bvec![0u8; 20],
-		Some(5),
-		bvec![0u8; 15],
-	);
+	RmrkCore::create_collection(Origin::signed(account), bvec![0u8; 20], Some(5), bvec![0u8; 15]);
 }
 
 fn mint_spirit(account: AccountId32, spirit_signature: Option<sr25519::Signature>) {
 	let overlord_pair = sr25519::Pair::from_seed(b"28133080042813308004281330800428");
 	if let Some(spirit_signature) = spirit_signature {
-		let message = OverlordMessage {
-			account: account.clone(),
-			purpose: Purpose::RedeemSpirit,
-		};
+		let message = OverlordMessage { account: account.clone(), purpose: Purpose::RedeemSpirit };
 		let enc_msg = Encode::encode(&message);
 		let signature = overlord_pair.sign(&enc_msg);
 		assert_ok!(PWNftSale::redeem_spirit(Origin::signed(account), signature));
@@ -78,10 +70,7 @@ fn setup_config(enable_status_type: StatusType) {
 	// Mint Spirits Collection
 	mint_collection(OVERLORD);
 	// Set Spirit Collection ID
-	assert_ok!(PWNftSale::set_spirit_collection_id(
-		Origin::signed(OVERLORD),
-		spirit_collection_id
-	));
+	assert_ok!(PWNftSale::set_spirit_collection_id(Origin::signed(OVERLORD), spirit_collection_id));
 	let origin_of_shell_collection_id = RmrkCore::collection_index();
 	// Mint Origin of Shells Collection
 	mint_collection(OVERLORD);
@@ -104,9 +93,7 @@ fn setup_config(enable_status_type: StatusType) {
 	// Initialize the Phala World Clock
 	assert_ok!(PWNftSale::initialize_world_clock(Origin::signed(OVERLORD)));
 	// Initialize Origin of Shell Inventory numbers
-	assert_ok!(PWNftSale::init_origin_of_shell_type_counts(Origin::signed(
-		OVERLORD
-	)));
+	assert_ok!(PWNftSale::init_origin_of_shell_type_counts(Origin::signed(OVERLORD)));
 	match enable_status_type {
 		StatusType::ClaimSpirits => {
 			assert_ok!(PWNftSale::set_status_type(
@@ -114,7 +101,7 @@ fn setup_config(enable_status_type: StatusType) {
 				true,
 				StatusType::ClaimSpirits
 			));
-		}
+		},
 		StatusType::PurchaseRareOriginOfShells => {
 			assert_ok!(PWNftSale::set_status_type(
 				Origin::signed(OVERLORD),
@@ -126,7 +113,7 @@ fn setup_config(enable_status_type: StatusType) {
 				true,
 				StatusType::PurchaseRareOriginOfShells
 			));
-		}
+		},
 		StatusType::PurchasePrimeOriginOfShells => {
 			assert_ok!(PWNftSale::set_status_type(
 				Origin::signed(OVERLORD),
@@ -138,7 +125,7 @@ fn setup_config(enable_status_type: StatusType) {
 				true,
 				StatusType::PurchasePrimeOriginOfShells
 			));
-		}
+		},
 		StatusType::PreorderOriginOfShells => {
 			assert_ok!(PWNftSale::set_status_type(
 				Origin::signed(OVERLORD),
@@ -150,7 +137,7 @@ fn setup_config(enable_status_type: StatusType) {
 				true,
 				StatusType::PreorderOriginOfShells
 			));
-		}
+		},
 		StatusType::LastDayOfSale => {
 			assert_ok!(PWNftSale::set_status_type(
 				Origin::signed(OVERLORD),
@@ -162,7 +149,7 @@ fn setup_config(enable_status_type: StatusType) {
 				true,
 				StatusType::LastDayOfSale
 			));
-		}
+		},
 	}
 }
 
@@ -173,18 +160,12 @@ fn claimed_spirit_works() {
 		// let overlord_pub = overlord_pair.public();
 		// Set Overlord and configuration then enable spirits to be claimed
 		setup_config(StatusType::ClaimSpirits);
-		let message = OverlordMessage {
-			account: BOB,
-			purpose: Purpose::RedeemSpirit,
-		};
+		let message = OverlordMessage { account: BOB, purpose: Purpose::RedeemSpirit };
 		// Sign BOB's Public Key and Metadata encoding with OVERLORD account
 		let claim = Encode::encode(&message);
 		let overlord_signature = overlord_pair.sign(&claim);
 		// Dispatch a redeem_spirit from BOB's account
-		assert_ok!(PWNftSale::redeem_spirit(
-			Origin::signed(BOB),
-			overlord_signature
-		));
+		assert_ok!(PWNftSale::redeem_spirit(Origin::signed(BOB), overlord_signature));
 		// ALICE should be able to claim since she has minimum amount of PHA
 		assert_ok!(PWNftSale::claim_spirit(Origin::signed(ALICE)));
 	});
@@ -198,10 +179,7 @@ fn claimed_spirit_twice_fails() {
 		// Set Overlord and configuration then enable spirits to be claimed
 		setup_config(StatusType::ClaimSpirits);
 		//  Only root can set the Overlord Admin account
-		assert_noop!(
-			PWNftSale::set_overlord(Origin::signed(ALICE), BOB),
-			BadOrigin
-		);
+		assert_noop!(PWNftSale::set_overlord(Origin::signed(ALICE), BOB), BadOrigin);
 		// Enable spirits to be claimed
 		assert_noop!(
 			PWNftSale::set_status_type(Origin::signed(BOB), true, StatusType::ClaimSpirits),
@@ -247,22 +225,18 @@ fn auto_increment_era_works() {
 		// Check Era is 1
 		assert_eq!(PWNftSale::era(), 1);
 		// Check if event triggered
-		System::assert_last_event(MockEvent::PWNftSale(
-			crate::pallet_pw_nft_sale::Event::NewEra {
-				time: 5 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS,
-				era: 1,
-			},
-		));
+		System::assert_last_event(MockEvent::PWNftSale(crate::pallet_pw_nft_sale::Event::NewEra {
+			time: 5 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS,
+			era: 1,
+		}));
 		fast_forward_to(16);
 		// Check Era is 1
 		assert_eq!(PWNftSale::era(), 3);
 		// Check if event triggered
-		System::assert_last_event(MockEvent::PWNftSale(
-			crate::pallet_pw_nft_sale::Event::NewEra {
-				time: 15 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS,
-				era: 3,
-			},
-		));
+		System::assert_last_event(MockEvent::PWNftSale(crate::pallet_pw_nft_sale::Event::NewEra {
+			time: 15 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS,
+			era: 3,
+		}));
 	});
 }
 
@@ -374,14 +348,9 @@ fn purchase_prime_origin_of_shell_works() {
 		let mut bob_metadata = BoundedVec::default();
 		let mut charlie_metadata = BoundedVec::default();
 		metadata_accounts(alice_metadata, bob_metadata.clone(), charlie_metadata);
-		let bob_message = OverlordMessage {
-			account: BOB,
-			purpose: Purpose::BuyPrimeOriginOfShells,
-		};
-		let bob_spirit_msg = OverlordMessage {
-			account: BOB,
-			purpose: Purpose::RedeemSpirit,
-		};
+		let bob_message =
+			OverlordMessage { account: BOB, purpose: Purpose::BuyPrimeOriginOfShells };
+		let bob_spirit_msg = OverlordMessage { account: BOB, purpose: Purpose::RedeemSpirit };
 		// Sign BOB's Public Key and Metadata encoding with OVERLORD account
 		let claim = Encode::encode(&bob_message);
 		let fake_claim = Encode::encode(&bob_spirit_msg);
@@ -581,10 +550,7 @@ fn mint_preorder_origin_of_shell_works() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -659,10 +625,7 @@ fn claim_refund_preorder_origin_of_shell_works() {
 		// Preorder status Vec
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::refund_not_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::refund_not_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::NotChosenPreorderRefunded {
 				preorder_id: 2u32,
@@ -779,10 +742,7 @@ fn mint_gift_origin_of_shell_works() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -855,10 +815,7 @@ fn can_initiate_incubation_process() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -892,10 +849,7 @@ fn can_initiate_incubation_process() {
 			pallet_pw_incubation::Error::<Test>::StartIncubationNotAvailable
 		);
 		// Set CanStartIncubationStatus to true
-		assert_ok!(PWIncubation::set_can_start_incubation_status(
-			Origin::signed(OVERLORD),
-			true
-		));
+		assert_ok!(PWIncubation::set_can_start_incubation_status(Origin::signed(OVERLORD), true));
 		let now = INIT_TIMESTAMP_SECONDS;
 		let official_hatch_time = now + INCUBATION_DURATION_SEC;
 		System::assert_last_event(MockEvent::PWIncubation(
@@ -906,11 +860,7 @@ fn can_initiate_incubation_process() {
 			},
 		));
 		// ALICE initiates incubation process
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(ALICE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(ALICE), 1u32, 2u32));
 		let alice_now = INIT_TIMESTAMP_SECONDS;
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
@@ -924,11 +874,7 @@ fn can_initiate_incubation_process() {
 		// BOB initiates during next block
 		fast_forward_to(2);
 		let bob_now = 2 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS;
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(BOB),
-			1u32,
-			0u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(BOB), 1u32, 0u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
 				collection_id: 1u32,
@@ -988,10 +934,7 @@ fn can_update_incubation_hatch_time() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -1019,10 +962,7 @@ fn can_update_incubation_hatch_time() {
 		assert_eq!(Balances::total_balance(&BOB), 14_990 * PHA);
 		assert_eq!(Balances::total_balance(&CHARLIE), 149_990 * PHA);
 		assert_eq!(Balances::total_balance(&OVERLORD), 2_813_308_034 * PHA);
-		assert_ok!(PWIncubation::set_can_start_incubation_status(
-			Origin::signed(OVERLORD),
-			true
-		));
+		assert_ok!(PWIncubation::set_can_start_incubation_status(Origin::signed(OVERLORD), true));
 		let now = INIT_TIMESTAMP_SECONDS;
 		let official_hatch_time = now + INCUBATION_DURATION_SEC;
 		System::assert_last_event(MockEvent::PWIncubation(
@@ -1033,11 +973,7 @@ fn can_update_incubation_hatch_time() {
 			},
 		));
 		// ALICE initiates incubation process
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(ALICE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(ALICE), 1u32, 2u32));
 		let alice_now = INIT_TIMESTAMP_SECONDS;
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
@@ -1107,10 +1043,7 @@ fn can_send_food_to_origin_of_shell() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -1138,10 +1071,7 @@ fn can_send_food_to_origin_of_shell() {
 		assert_eq!(Balances::total_balance(&BOB), 14_990 * PHA);
 		assert_eq!(Balances::total_balance(&CHARLIE), 149_990 * PHA);
 		assert_eq!(Balances::total_balance(&OVERLORD), 2_813_308_034 * PHA);
-		assert_ok!(PWIncubation::set_can_start_incubation_status(
-			Origin::signed(OVERLORD),
-			true
-		));
+		assert_ok!(PWIncubation::set_can_start_incubation_status(Origin::signed(OVERLORD), true));
 		let now = INIT_TIMESTAMP_SECONDS;
 		let official_hatch_time = now + INCUBATION_DURATION_SEC;
 		System::assert_last_event(MockEvent::PWIncubation(
@@ -1162,11 +1092,7 @@ fn can_send_food_to_origin_of_shell() {
 			pallet_uniques::Error::<Test>::Frozen
 		);
 		// ALICE initiates incubation process
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(ALICE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(ALICE), 1u32, 2u32));
 		let alice_now = INIT_TIMESTAMP_SECONDS;
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
@@ -1192,11 +1118,7 @@ fn can_send_food_to_origin_of_shell() {
 			},
 		));
 		// CHARLIE feeds ALICE's Origin of Shell Twice and fails on the third
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 2u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,
@@ -1204,11 +1126,7 @@ fn can_send_food_to_origin_of_shell() {
 				sender: CHARLIE,
 			},
 		));
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 2u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,
@@ -1223,11 +1141,7 @@ fn can_send_food_to_origin_of_shell() {
 		// CHARLIE can feed now that a new Era has started
 		fast_forward_to(7);
 		let bob_now = 7 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS;
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(BOB),
-			1u32,
-			0u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(BOB), 1u32, 0u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
 				collection_id: 1u32,
@@ -1237,11 +1151,7 @@ fn can_send_food_to_origin_of_shell() {
 				hatch_time: official_hatch_time,
 			},
 		));
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			0u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 0u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,
@@ -1299,10 +1209,7 @@ fn can_hatch_origin_of_shell() {
 		));
 		let preorders: Vec<PreorderId> = vec![0u32, 1u32, 2u32];
 		// Set ALICE & BOB has Chosen and CHARLIE as NotChosen
-		assert_ok!(PWNftSale::mint_chosen_preorders(
-			Origin::signed(OVERLORD),
-			preorders
-		));
+		assert_ok!(PWNftSale::mint_chosen_preorders(Origin::signed(OVERLORD), preorders));
 		System::assert_last_event(MockEvent::PWNftSale(
 			crate::pallet_pw_nft_sale::Event::ChosenPreorderMinted {
 				preorder_id: 2u32,
@@ -1330,10 +1237,7 @@ fn can_hatch_origin_of_shell() {
 		assert_eq!(Balances::total_balance(&BOB), 14_990 * PHA);
 		assert_eq!(Balances::total_balance(&CHARLIE), 149_990 * PHA);
 		assert_eq!(Balances::total_balance(&OVERLORD), 2_813_308_034 * PHA);
-		assert_ok!(PWIncubation::set_can_start_incubation_status(
-			Origin::signed(OVERLORD),
-			true
-		));
+		assert_ok!(PWIncubation::set_can_start_incubation_status(Origin::signed(OVERLORD), true));
 		let now = INIT_TIMESTAMP_SECONDS;
 		let official_hatch_time = now + INCUBATION_DURATION_SEC;
 		System::assert_last_event(MockEvent::PWIncubation(
@@ -1344,11 +1248,7 @@ fn can_hatch_origin_of_shell() {
 			},
 		));
 		// ALICE initiates incubation process
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(ALICE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(ALICE), 1u32, 2u32));
 		let alice_now = INIT_TIMESTAMP_SECONDS;
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
@@ -1374,11 +1274,7 @@ fn can_hatch_origin_of_shell() {
 			},
 		));
 		// CHARLIE feeds ALICE's Origin of Shell Twice and fails on the third
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 2u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,
@@ -1386,11 +1282,7 @@ fn can_hatch_origin_of_shell() {
 				sender: CHARLIE,
 			},
 		));
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			2u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 2u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,
@@ -1410,11 +1302,7 @@ fn can_hatch_origin_of_shell() {
 		// CHARLIE can feed now that a new Era has started
 		fast_forward_to(7);
 		let bob_now = 7 * BLOCK_TIME_SECONDS + INIT_TIMESTAMP_SECONDS;
-		assert_ok!(PWIncubation::start_incubation(
-			Origin::signed(BOB),
-			1u32,
-			0u32
-		));
+		assert_ok!(PWIncubation::start_incubation(Origin::signed(BOB), 1u32, 0u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::StartedIncubation {
 				collection_id: 1u32,
@@ -1425,11 +1313,7 @@ fn can_hatch_origin_of_shell() {
 			},
 		));
 		// CHARLIE can feed BOB's Origin of Shell now
-		assert_ok!(PWIncubation::feed_origin_of_shell(
-			Origin::signed(CHARLIE),
-			1u32,
-			0u32
-		));
+		assert_ok!(PWIncubation::feed_origin_of_shell(Origin::signed(CHARLIE), 1u32, 0u32));
 		System::assert_last_event(MockEvent::PWIncubation(
 			crate::pallet_pw_incubation::Event::OriginOfShellReceivedFood {
 				collection_id: 1u32,

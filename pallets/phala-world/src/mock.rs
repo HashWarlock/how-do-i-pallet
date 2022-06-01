@@ -251,9 +251,7 @@ impl Default for ExtBuilder {
 // Build genesis storage according to the mock runtime.
 impl ExtBuilder {
 	pub fn build(self, overlord_key: AccountId32) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
-			.unwrap();
+		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		pallet_pw_nft_sale::GenesisConfig::<Test> {
 			zero_day: None,
