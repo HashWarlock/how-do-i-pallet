@@ -26,7 +26,7 @@ async function main() {
             StatusType: {
                 _enum: ['ClaimSpirits', 'PurchaseRareOriginOfShells', 'PurchasePrimeOriginOfShells', 'PreorderOriginOfShells']
             },
-            OriginOfShellType: {
+            RarityType: {
                 _enum: ['Prime', 'Magic', 'Legendary']
             },
             PreorderInfo: {

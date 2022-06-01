@@ -27,7 +27,7 @@ async function main() {
             StatusType: {
                 _enum: ['ClaimSpirits', 'PurchaseRareOriginOfShells', 'PurchasePrimeOriginOfShells', 'PreorderOriginOfShells']
             },
-            OriginOfShellType: {
+            RarityType: {
                 _enum: ['Prime', 'Magic', 'Legendary']
             },
             PreorderInfo: {
@@ -60,10 +60,10 @@ async function main() {
     const purchasePrimeOriginOfShells = api.createType('StatusType', 'PurchasePrimeOriginOfShells');
     const preorderOriginOfShells = api.createType('StatusType', 'PreorderOriginOfShells');
 
-    // OriginOfShellTypes
-    const legendary = api.createType('OriginOfShellType', 'Legendary');
-    const magic = api.createType('OriginOfShellType', 'Magic');
-    const prime = api.createType('OriginOfShellType', 'Prime');
+    // RarityTypes
+    const legendary = api.createType('RarityType', 'Legendary');
+    const magic = api.createType('RarityType', 'Magic');
+    const prime = api.createType('RarityType', 'Prime');
 
     // RaceTypes
     const cyborg = api.createType('RaceType', 'Cyborg');
@@ -231,7 +231,7 @@ async function main() {
     {
         const originOfShellsInventoryLegendary = await api.query.pwNftSale.OriginOfShellsInventory.keys('Legendary');
         originOfShellsInventoryLegendary.forEach(([{ args: race }, _value]) => {
-           console.log(`Origin of Shell Type: Legendary\nRace Type: {}`)
+           console.log(`Rarity Type: Legendary\nRace Type: {}`)
         });
     }
 

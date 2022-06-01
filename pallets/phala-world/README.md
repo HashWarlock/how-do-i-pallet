@@ -2,10 +2,10 @@
 
 ## Types
 ```rust
-pub enum OriginOfShellType {
-    /// Origin of Shell type is Prime
+pub enum RarityType {
+    /// Rarity Type is Prime
     Prime,
-    /// Origin of Shell type is Magic
+    /// Rarity Type is Magic
     Magic,
     /// Origin of Shell is Legendary
     Legendary,
@@ -178,7 +178,7 @@ signature: sr25519::Signature,
 Buy a rare origin of shell of either type Magic or Legendary.
 ```rust
 origin: OriginFor<T>,
-origin_of_shell_type: OriginOfShellType,
+rarity_type: RarityType,
 race: RaceType,
 career: CareerType,
 ```

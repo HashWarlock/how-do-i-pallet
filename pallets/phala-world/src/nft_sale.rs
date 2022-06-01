@@ -19,7 +19,7 @@ pub use pallet_rmrk_core::types::*;
 pub use pallet_rmrk_market;
 
 pub use crate::traits::{
-	primitives::*, CareerType, NftSaleInfo, NftSaleType, OriginOfShellType, OverlordMessage,
+	primitives::*, CareerType, NftSaleInfo, NftSaleType, RarityType, OverlordMessage,
 	PreorderInfo, Purpose, RaceType, StatusType,
 };
 use rmrk_traits::primitives::*;
@@ -91,7 +91,7 @@ pub mod pallet {
 	pub type OriginOfShellsInventory<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		OriginOfShellType,
+		RarityType,
 		Blake2_128Concat,
 		RaceType,
 		NftSaleInfo,
@@ -288,7 +288,7 @@ pub mod pallet {
 		},
 		/// Origin of Shell minted from the preorder
 		OriginOfShellMinted {
-			origin_of_shell_type: OriginOfShellType,
+			rarity_type: RarityType,
 			collection_id: CollectionId,
 			nft_id: NftId,
 			owner: T::AccountId,
@@ -305,7 +305,7 @@ pub mod pallet {
 		},
 		/// Origin of Shell inventory updated
 		OriginOfShellInventoryUpdated {
-			origin_of_shell_type: OriginOfShellType,
+			rarity_type: RarityType,
 		},
 		/// Spirit Claims status has changed
 		ClaimSpiritStatusChanged {
@@ -383,7 +383,7 @@ pub mod pallet {
 		OverlordNotSet,
 		RequireOverlordAccount,
 		InvalidStatusType,
-		WrongOriginOfShellType,
+		WrongRarityType,
 		SpiritCollectionNotSet,
 		SpiritCollectionIdAlreadySet,
 		OriginOfShellCollectionNotSet,
@@ -456,13 +456,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Buy a rare origin_of_shell of either type Magic or Legendary. Both Origin of Shell types
+		/// Buy a rare origin_of_shell of either type Magic or Legendary. Both Rarity Types
 		/// will have a set price. These will also be limited in quantity and on a first come, first
 		/// serve basis.
 		///
 		/// Parameters:
 		/// - origin: The origin of the extrinsic.
-		/// - origin_of_shell_type: The type of origin_of_shell to be purchased.
+		/// - rarity_type: The type of origin_of_shell to be purchased.
 		/// - race: The race of the origin_of_shell chosen by the user.
 		/// - career: The career of the origin_of_shell chosen by the user or auto-generated based
 		///   on metadata
@@ -470,7 +470,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn buy_rare_origin_of_shell(
 			origin: OriginFor<T>,
-			origin_of_shell_type: OriginOfShellType,
+			rarity_type: RarityType,
 			race: RaceType,
 			career: CareerType,
 		) -> DispatchResult {
@@ -481,16 +481,16 @@ pub mod pallet {
 			);
 			let overlord = Self::overlord()?;
 			// Get Origin of Shell Price based on Origin of ShellType
-			let origin_of_shell_price = match origin_of_shell_type {
-				OriginOfShellType::Legendary => T::LegendaryOriginOfShellPrice::get(),
-				OriginOfShellType::Magic => T::MagicOriginOfShellPrice::get(),
+			let origin_of_shell_price = match rarity_type {
+				RarityType::Legendary => T::LegendaryOriginOfShellPrice::get(),
+				RarityType::Magic => T::MagicOriginOfShellPrice::get(),
 				_ => return Err(Error::<T>::InvalidPurchase.into()),
 			};
 			// Mint origin of shell
 			Self::do_mint_origin_of_shell_nft(
 				overlord,
 				sender,
-				origin_of_shell_type,
+				rarity_type,
 				race,
 				career,
 				origin_of_shell_price,
@@ -539,7 +539,7 @@ pub mod pallet {
 			Self::do_mint_origin_of_shell_nft(
 				overlord,
 				sender,
-				OriginOfShellType::Prime,
+				RarityType::Prime,
 				race,
 				career,
 				origin_of_shell_price,
@@ -637,7 +637,7 @@ pub mod pallet {
 					Self::do_mint_origin_of_shell_nft(
 						sender.clone(),
 						preorder_owner.clone(),
-						OriginOfShellType::Prime,
+						RarityType::Prime,
 						preorder_info.race,
 						preorder_info.career,
 						origin_of_shell_price,
@@ -711,9 +711,9 @@ pub mod pallet {
 		/// Origin of Shell NFT
 		///
 		/// Parameters:
-		/// `origin`: Expected to come from Overlord admin account
-		/// `owner`: Owner to gift the Origin of Shell to
-		/// - origin_of_shell_type: The type of origin_of_shell to be gifted.
+		/// - `origin`: Expected to come from Overlord admin account
+		/// - `owner`: Owner to gift the Origin of Shell to
+		/// - `rarity_type`: The type of origin_of_shell to be gifted.
 		/// - `race`: The race of the origin_of_shell chosen by the user.
 		/// - `career`: The career of the origin_of_shell chosen by the user or auto-generated based
 		///   on metadata
@@ -723,7 +723,7 @@ pub mod pallet {
 		pub fn mint_gift_origin_of_shell(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
-			origin_of_shell_type: OriginOfShellType,
+			rarity_type: RarityType,
 			race: RaceType,
 			career: CareerType,
 			nft_sale_type: NftSaleType,
@@ -737,7 +737,7 @@ pub mod pallet {
 			Self::do_mint_origin_of_shell_nft(
 				sender,
 				owner.clone(),
-				origin_of_shell_type,
+				rarity_type,
 				race,
 				career,
 				Default::default(),
@@ -831,7 +831,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `origin` - Expected Overlord admin account
 		#[pallet::weight(0)]
-		pub fn init_origin_of_shell_type_counts(origin: OriginFor<T>) -> DispatchResult {
+		pub fn init_rarity_type_counts(origin: OriginFor<T>) -> DispatchResult {
 			// Ensure Overlord account makes call
 			let sender = ensure_signed(origin)?;
 			Self::ensure_overlord(&sender)?;
@@ -848,52 +848,52 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `origin` - Expected Overlord admin account
-		/// - `origin_of_shell_type` - Type of Origin of Shell
+		/// - `rarity_type` - Type of Origin of Shell
 		/// - `for_sale_count` - Number of Origin of Shells for sale
 		/// - `giveaway_count` - Number of Origin of Shells for giveaways
 		/// - `reserve_count` - Number of Origin of Shells to be reserved
 		#[pallet::weight(0)]
-		pub fn update_origin_of_shell_type_counts(
+		pub fn update_rarity_type_counts(
 			origin: OriginFor<T>,
-			origin_of_shell_type: OriginOfShellType,
+			rarity_type: RarityType,
 			for_sale_count: u32,
 			giveaway_count: u32,
 		) -> DispatchResult {
 			// Ensure Overlord account makes call
 			let sender = ensure_signed(origin)?;
 			Self::ensure_overlord(&sender)?;
-			// Ensure they are updating the OriginOfShellType::Prime
+			// Ensure they are updating the RarityType::Prime
 			ensure!(
-				origin_of_shell_type == OriginOfShellType::Prime,
-				Error::<T>::WrongOriginOfShellType
+				rarity_type == RarityType::Prime,
+				Error::<T>::WrongRarityType
 			);
 			// Mutate the existing storage for the Prime Origin of Shells
 			Self::update_nft_sale_info(
-				origin_of_shell_type,
+				rarity_type,
 				RaceType::AISpectre,
 				for_sale_count,
 				giveaway_count,
 			);
 			Self::update_nft_sale_info(
-				origin_of_shell_type,
+				rarity_type,
 				RaceType::Cyborg,
 				for_sale_count,
 				giveaway_count,
 			);
 			Self::update_nft_sale_info(
-				origin_of_shell_type,
+				rarity_type,
 				RaceType::Pandroid,
 				for_sale_count,
 				giveaway_count,
 			);
 			Self::update_nft_sale_info(
-				origin_of_shell_type,
+				rarity_type,
 				RaceType::XGene,
 				for_sale_count,
 				giveaway_count,
 			);
 
-			Self::deposit_event(Event::OriginOfShellInventoryUpdated { origin_of_shell_type });
+			Self::deposit_event(Event::OriginOfShellInventoryUpdated { rarity_type });
 
 			Ok(())
 		}
@@ -1116,7 +1116,7 @@ where
 	}
 
 	/// Set initial OriginOfShellInventory values in the StorageDoubleMap. Key1 will be of
-	/// OriginOfShellType and Key2 will be the RaceType and the Value will be NftSaleInfo struct
+	/// RarityType and Key2 will be the RaceType and the Value will be NftSaleInfo struct
 	/// containing the information for the NFT sale. Initial config will look as follows:
 	/// `<Legendary>,<RaceType> => NftSaleInfo { race_count: 0, career_count: 0,
 	/// race_for_sale_count: 1, race_giveaway_count: 0, race_reserved_count: 1 }`
@@ -1125,7 +1125,7 @@ where
 	/// `<Prime>,<RaceType> => NftSaleInfo { race_count: 0, career_count: 0, race_for_sale_count:
 	/// 1250, race_giveaway_count: 50, race_reserved_count: 0 }`
 	fn set_initial_origin_of_shell_inventory() -> DispatchResult {
-		// 3 OriginOfShellType Prime, Magic & Legendary and 4 different RaceType Cyborg, AISpectre,
+		// 3 RarityType Prime, Magic & Legendary and 4 different RaceType Cyborg, AISpectre,
 		// XGene & Pandroid
 		ensure!(
 			!IsOriginOfShellsInventorySet::<T>::get(),
@@ -1138,22 +1138,22 @@ where
 			race_reserved_count: 1,
 		};
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Legendary,
+			RarityType::Legendary,
 			RaceType::AISpectre,
 			legendary_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Legendary,
+			RarityType::Legendary,
 			RaceType::Cyborg,
 			legendary_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Legendary,
+			RarityType::Legendary,
 			RaceType::Pandroid,
 			legendary_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Legendary,
+			RarityType::Legendary,
 			RaceType::XGene,
 			legendary_nft_sale_info,
 		);
@@ -1164,22 +1164,22 @@ where
 			race_reserved_count: 10,
 		};
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Magic,
+			RarityType::Magic,
 			RaceType::AISpectre,
 			magic_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Magic,
+			RarityType::Magic,
 			RaceType::Cyborg,
 			magic_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Magic,
+			RarityType::Magic,
 			RaceType::Pandroid,
 			magic_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Magic,
+			RarityType::Magic,
 			RaceType::XGene,
 			magic_nft_sale_info,
 		);
@@ -1190,22 +1190,22 @@ where
 			race_reserved_count: 0,
 		};
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Prime,
+			RarityType::Prime,
 			RaceType::AISpectre,
 			prime_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Prime,
+			RarityType::Prime,
 			RaceType::Cyborg,
 			prime_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Prime,
+			RarityType::Prime,
 			RaceType::Pandroid,
 			prime_nft_sale_info,
 		);
 		OriginOfShellsInventory::<T>::insert(
-			OriginOfShellType::Prime,
+			RarityType::Prime,
 			RaceType::XGene,
 			prime_nft_sale_info,
 		);
@@ -1215,20 +1215,20 @@ where
 		Ok(())
 	}
 
-	/// Update the NftSaleInfo for a given OriginOfShellType and RaceType
+	/// Update the NftSaleInfo for a given RarityType and RaceType
 	///
 	/// Parameters:
-	/// - `origin_of_shell_type`: OriginOfShellType to update in OriginOfShellInventory
+	/// - `rarity_type`: RarityType to update in OriginOfShellInventory
 	/// - `race`: RaceType to update in OriginOfShellInventory
 	/// - `for_sale_count`: count to increment the for sale count
 	/// - `giveaway_count`: count to increment the race giveaway count
 	fn update_nft_sale_info(
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 		for_sale_count: u32,
 		giveaway_count: u32,
 	) {
-		OriginOfShellsInventory::<T>::mutate(origin_of_shell_type, race, |nft_sale_info| {
+		OriginOfShellsInventory::<T>::mutate(rarity_type, race, |nft_sale_info| {
 			if let Some(nft_sale_info) = nft_sale_info {
 				nft_sale_info.race_for_sale_count =
 					nft_sale_info.race_for_sale_count.saturating_add(for_sale_count);
@@ -1286,13 +1286,13 @@ where
 	/// Parameters:
 	/// - `overlord`
 	/// - `sender`
-	/// - `origin_of_shell_type`
+	/// - `rarity_type`
 	/// - `race`
 	/// - `career`
 	fn do_mint_origin_of_shell_nft(
 		overlord: T::AccountId,
 		sender: T::AccountId,
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 		career: CareerType,
 		price: BalanceOf<T>,
@@ -1319,7 +1319,7 @@ where
 		// Get the Race's Origin of Shell metadata
 		let metadata = Self::get_origin_of_shell_metadata(race)?;
 		// Check if race and career types have mints left
-		Self::has_race_type_left(origin_of_shell_type, race, nft_sale_type)?;
+		Self::has_race_type_left(rarity_type, race, nft_sale_type)?;
 		// Transfer the amount for the rare Origin of Shell NFT then mint the origin_of_shell
 		<T as pallet::Config>::Currency::transfer(
 			&sender,
@@ -1336,17 +1336,17 @@ where
 			None,
 			metadata,
 		)?;
-		// Set Origin of Shell Type, Race and Career attributes for NFT
+		// Set Rarity Type, Race and Career attributes for NFT
 		Self::set_nft_attributes(
 			origin_of_shell_collection_id,
 			nft_id,
-			origin_of_shell_type,
+			rarity_type,
 			race,
 			career,
 		)?;
 		// Update storage
-		Self::decrement_race_type_left(origin_of_shell_type, race, nft_sale_type)?;
-		Self::increment_race_type(origin_of_shell_type, race)?;
+		Self::decrement_race_type_left(rarity_type, race, nft_sale_type)?;
+		Self::increment_race_type(rarity_type, race)?;
 		Self::increment_career_type(career);
 
 		// Freeze NFT so it cannot be transferred
@@ -1357,7 +1357,7 @@ where
 		)?;
 
 		Self::deposit_event(Event::OriginOfShellMinted {
-			origin_of_shell_type,
+			rarity_type,
 			collection_id: origin_of_shell_collection_id,
 			nft_id,
 			owner: sender,
@@ -1373,24 +1373,24 @@ where
 	/// Parameters:
 	/// - `collection_id`: Collection id of the Origin of Shell or Shell NFT
 	/// - `nft_id`: NFT id of the Origin of Shell or Shell NFT
-	/// - `origin_of_shell_type`: Origin of Shell or Shell type for the NFT
+	/// - `rarity_type`: Origin of Shell or Shell type for the NFT
 	/// - `race`: Race attribute to set for the Origin of Shell or Shell NFT
 	/// - `career`: Career attribute to set for the Origin of Shell or Shell NFT
 	pub(crate) fn set_nft_attributes(
 		collection_id: CollectionId,
 		nft_id: NftId,
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 		career: CareerType,
 	) -> DispatchResult {
 		let overlord = Self::overlord()?;
 
-		let origin_of_shell_type_key: BoundedVec<u8, T::KeyLimit> =
-			Self::to_boundedvec_key("origin_of_shell_type")?;
-		let origin_of_shell_type_value = origin_of_shell_type
+		let rarity_type_key: BoundedVec<u8, T::KeyLimit> =
+			Self::to_boundedvec_key("rarity")?;
+		let rarity_type_value = rarity_type
 			.encode()
 			.try_into()
-			.expect("[origin_of_shell_type] should not fail");
+			.expect("[rarity] should not fail");
 
 		let race_key: BoundedVec<u8, T::KeyLimit> = Self::to_boundedvec_key("race")?;
 		let race_value = race.encode().try_into().expect("[race] should not fail");
@@ -1398,13 +1398,13 @@ where
 		let career_key = Self::to_boundedvec_key("career")?;
 		let career_value = career.encode().try_into().expect("[career] should not fail");
 
-		// Set Origin of Shell Type
+		// Set Rarity Type
 		pallet_uniques::Pallet::<T>::set_attribute(
 			Origin::<T>::Signed(overlord.clone()).into(),
 			collection_id,
 			Some(nft_id),
-			origin_of_shell_type_key,
-			origin_of_shell_type_value,
+			rarity_type_key,
+			rarity_type_value,
 		)?;
 		// Set Race
 		pallet_uniques::Pallet::<T>::set_attribute(
@@ -1440,14 +1440,14 @@ where
 	/// Increment RaceType count for the `race`
 	///
 	/// Parameters:
-	/// - `origin_of_shell_type`: Origin of Shell type
+	/// - `rarity_type`: Rarity Type
 	/// - `race`: The Career to increment count
 	fn increment_race_type(
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 	) -> DispatchResult {
 		OriginOfShellsInventory::<T>::try_mutate_exists(
-			origin_of_shell_type,
+			rarity_type,
 			race,
 			|nft_sale_info| -> DispatchResult {
 				if let Some(nft_sale_info) = nft_sale_info {
@@ -1476,12 +1476,12 @@ where
 	/// Parameters:
 	/// - `race`: The Race to increment count
 	fn decrement_race_type_left(
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 		nft_sale_type: NftSaleType,
 	) -> DispatchResult {
 		OriginOfShellsInventory::<T>::try_mutate_exists(
-			origin_of_shell_type,
+			rarity_type,
 			race,
 			|nft_sale_info| -> DispatchResult {
 				if let Some(nft_sale_info) = nft_sale_info {
@@ -1509,11 +1509,11 @@ where
 	/// Parameters:
 	/// - `race`: The Race to check
 	fn has_race_type_left(
-		origin_of_shell_type: OriginOfShellType,
+		rarity_type: RarityType,
 		race: RaceType,
 		nft_sale_type: NftSaleType,
 	) -> DispatchResult {
-		if let Some(nft_sale_info) = OriginOfShellsInventory::<T>::get(origin_of_shell_type, race) {
+		if let Some(nft_sale_info) = OriginOfShellsInventory::<T>::get(rarity_type, race) {
 			match nft_sale_type {
 				NftSaleType::ForSale => {
 					ensure!(nft_sale_info.race_for_sale_count > 0, Error::<T>::RaceMintMaxReached)

@@ -57,7 +57,7 @@ await api.tx.pwNftSale.setOriginOfShellCollectionId(
 ### Initialize the Inventory counts
 In the `init.js` script there is a transaction that will set the starting inventory counts for the initial sales until the preorder phase. This script will populate the StorageDoubleMap called `originOfShellsInventory`.
 ```javascript
-await api.tx.pwNftSale.initOriginOfShellTypeCounts().signAndSend(overlord, {nonce: -1});
+await api.tx.pwNftSale.initRarityTypeCounts().signAndSend(overlord, {nonce: -1});
 ```
 
 ### Generate RedeemSpirit and BuyPrimeOriginOfShells Signatures
@@ -99,7 +99,7 @@ await api.tx.pwNftSale.setStatusType(true, 'PurchaseRareOriginOfShells')
     .signAndSend(overlord);
 ```
 Here is an example of a user executing a transaction called `buyRareOriginOfShell` to purchase a rare Origin of Shell NFT. The Parameters can be as follows:
-- `OriginOfShellType`: Origin of Shell Type and in this case the 2 acceptable values are `'Legendary'` or `'Magic'`.
+- `RarityType`: Rarity Type and in this case the 2 acceptable values are `'Legendary'` or `'Magic'`.
 - `RaceType`: A pick of any of the 4 Races `'Cyborg'`, `'AISpectre'`, `'Pandroid'`, `'XGene'`.
 - `CareerType`: A pick of any of the 5 Careers `'HardwareDruid'`, `'RoboWarrior'`, `'TradeNegotiator'`, `'HackerWizard'`, `'Web3Monk'`.
 ```javascript
@@ -138,7 +138,7 @@ Preorders will be similar in simplicity like the rare Origin of Shell purchases.
 await api.tx.pwNftSale.setStatusType(false, 'PurchasePrimeOriginOfShells')
     .signAndSend(overlord);
 // Update inventory with 900 extra `Prime` Origin of Shell NFTs to sell and 50 per species to giveaway
-await api.tx.pwNftSale.updateOriginOfShellTypeCounts('Prime', 900, 50).signAndSend(overlord);
+await api.tx.pwNftSale.updateRarityTypeCounts('Prime', 900, 50).signAndSend(overlord);
 await api.tx.pwNftSale.setStatusType(true, 'PreorderOriginOfShells')
     .signAndSend(overlord);
 ```

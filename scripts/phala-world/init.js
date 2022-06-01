@@ -116,7 +116,7 @@ async function main() {
         console.log("Create Spirits and Origin of Shell Collections...Done");
         console.log("Initialize Origin of Shell NFT sale inventory...");
         // set the initial inventory numbers that will be used until the preorder phase
-        await api.tx.pwNftSale.initOriginOfShellTypeCounts()
+        await api.tx.pwNftSale.initRarityTypeCounts()
             .signAndSend(overlord, {nonce: nonceOverlord++});
         console.log("Initialize Origin of Shell NFT sale inventory...Done");
         console.log("Set ClaimSpirits status to true...");

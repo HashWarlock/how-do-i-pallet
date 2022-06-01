@@ -26,7 +26,7 @@ async function main() {
             StatusType: {
                 _enum: ['ClaimSpirits', 'PurchaseRareOriginOfShells', 'PurchasePrimeOriginOfShells', 'PreorderOriginOfShells']
             },
-            OriginOfShellType: {
+            RarityType: {
                 _enum: ['Prime', 'Magic', 'Legendary']
             },
             PreorderInfo: {
@@ -66,10 +66,10 @@ async function main() {
     const purchasePrimeOriginOfShells = api.createType('StatusType', 'PurchasePrimeOriginOfShells');
     const preorderOriginOfShells = api.createType('StatusType', 'PreorderOriginOfShells');
 
-    // OriginOfShellTypes
-    const legendary = api.createType('OriginOfShellType', 'Legendary');
-    const magic = api.createType('OriginOfShellType', 'Magic');
-    const prime = api.createType('OriginOfShellType', 'Prime');
+    // RarityTypes
+    const legendary = api.createType('RarityType', 'Legendary');
+    const magic = api.createType('RarityType', 'Magic');
+    const prime = api.createType('RarityType', 'Prime');
 
     // RaceTypes
     const cyborg = api.createType('RaceType', 'Cyborg');
@@ -120,7 +120,7 @@ async function main() {
 
     // purchase rare origin of shell
     {
-        // OriginOfShellType ['Legendary', 'Magic', 'Prime']
+        // RarityType ['Legendary', 'Magic', 'Prime']
         // RaceType ['AISpectre', 'Cyborg', 'Pandroid', 'XGene']
         // CareerType ['HardwareDruid', 'HackerWizard', 'RoboWarrior', 'TradeNegotiator', 'Web3Monk']
         // metadata '0x2813308004'
@@ -177,7 +177,7 @@ async function main() {
     // This is called AFTER the Whitelist Sale is complete. Must Disable Whitelist sale before updating to ensure numbers
     // do not fluctuate.
     {
-        await api.tx.pwNftSale.updateOriginOfShellTypeCounts('Prime', 900, 50)
+        await api.tx.pwNftSale.updateRarityTypeCounts('Prime', 900, 50)
             .signAndSend(overlord);
     }
 
