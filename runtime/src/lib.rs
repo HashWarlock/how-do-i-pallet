@@ -22,8 +22,8 @@ use sp_version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{AsEnsureOriginWithArg, EnsureOneOf, KeyOwnerProofSystem, Randomness, StorageInfo},
+	construct_runtime, match_types, parameter_types,
+	traits::{AsEnsureOriginWithArg, Contains, EnsureOneOf, KeyOwnerProofSystem, Randomness, StorageInfo},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		IdentityFee, Weight,
@@ -339,7 +339,7 @@ parameter_types! {
 }
 impl pallet_pw_nft_sale::Config for Runtime {
 	type Event = Event;
-	type OverlordOrigin = EnsureRootOrHalfCouncil;
+	type GovernanceOrigin = EnsureRootOrHalfCouncil;
 	type Currency = Balances;
 	type Time = pallet_timestamp::Pallet<Runtime>;
 	type SecondsPerEra = SecondsPerEra;
@@ -476,6 +476,54 @@ construct_runtime!(
 		TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
 	}
 );
+
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(call: &Call) -> bool {
+		if let Call::Uniques(uniques_method) = call {
+			return match uniques_method {
+				pallet_uniques::Call::approve_transfer { .. }
+				| pallet_uniques::Call::burn { .. }
+				| pallet_uniques::Call::cancel_approval { .. }
+				| pallet_uniques::Call::clear_class_metadata { .. }
+				| pallet_uniques::Call::clear_metadata { .. }
+				| pallet_uniques::Call::create { .. }
+				| pallet_uniques::Call::destroy { .. }
+				| pallet_uniques::Call::force_asset_status { .. }
+				| pallet_uniques::Call::force_create { .. }
+				| pallet_uniques::Call::freeze_class { .. }
+				| pallet_uniques::Call::mint { .. }
+				| pallet_uniques::Call::redeposit { .. }
+				| pallet_uniques::Call::set_class_metadata { .. }
+				| pallet_uniques::Call::set_metadata { .. }
+				| pallet_uniques::Call::thaw_class { .. }
+				| pallet_uniques::Call::transfer { .. }
+				| pallet_uniques::Call::transfer_ownership { .. }
+				| pallet_uniques::Call::__Ignore { .. } => false,
+				_ => true,
+			};
+		}
+
+		if let Call::RmrkCore(rmrk_core_method) = call {
+			return match rmrk_core_method {
+				pallet_rmrk_core::Call::change_collection_issuer { .. }
+				| pallet_rmrk_core::Call::__Ignore { .. } => true,
+				_ => false,
+			};
+		}
+
+		matches!(
+            call,
+			Call::Sudo { .. } |
+            // System
+            Call::System { .. } | Call::Timestamp { .. } | Call::Utility { .. } |
+            Call::Multisig { .. } | Call::Proxy { .. } | Call::Scheduler { .. } |
+            Call::Vesting { .. } | Call::Preimage { .. } |
+			// Phala World
+            Call::RmrkMarket { .. } | Call::PWNftSale { .. } | Call::PWIncubation { .. }
+        )
+	}
+}
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;

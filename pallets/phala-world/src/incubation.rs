@@ -2,7 +2,7 @@
 
 pub use crate::{
 	pallet_pw_nft_sale,
-	traits::{primitives::*, CareerType, FoodInfo, RarityType, RaceType},
+	traits::{primitives::*, CareerType, FoodInfo, RaceType, RarityType},
 };
 use codec::Decode;
 use frame_support::{
@@ -17,7 +17,7 @@ use frame_support::{
 use frame_system::{ensure_signed, pallet_prelude::*};
 pub use pallet_rmrk_core::types::*;
 pub use pallet_rmrk_market;
-use rmrk_traits::{primitives::*, resource::ResourceInfo, AccountIdOrCollectionNftTuple};
+use rmrk_traits::primitives::*;
 use sp_std::vec::Vec;
 
 pub use self::pallet::*;
@@ -146,6 +146,7 @@ pub mod pallet {
 		RaceNotDetected,
 		CareerNotDetected,
 		RarityTypeNotDetected,
+		GenerationNotDetected,
 		FoodInfoUpdateError,
 	}
 
@@ -322,26 +323,27 @@ pub mod pallet {
 			// Get race, key and Rarity Type before burning origin of shell NFT
 			let race_key = pallet_pw_nft_sale::pallet::Pallet::<T>::to_boundedvec_key("race")?;
 			let career_key = pallet_pw_nft_sale::pallet::Pallet::<T>::to_boundedvec_key("career")?;
-			let rarity_type_key =
-				pallet_pw_nft_sale::Pallet::<T>::to_boundedvec_key("rarity")?;
+			let rarity_type_key = pallet_pw_nft_sale::Pallet::<T>::to_boundedvec_key("rarity")?;
+			let generation_key = pallet_pw_nft_sale::Pallet::<T>::to_boundedvec_key("generation")?;
 			let race = pallet_uniques::Pallet::<T>::attribute(&collection_id, &nft_id, &race_key)
 				.ok_or(Error::<T>::RaceNotDetected)?;
 			let career =
 				pallet_uniques::Pallet::<T>::attribute(&collection_id, &nft_id, &career_key)
 					.ok_or(Error::<T>::CareerNotDetected)?;
-			let rarity_type_value = pallet_uniques::Pallet::<T>::attribute(
-				&collection_id,
-				&nft_id,
-				&rarity_type_key,
-			)
-			.ok_or(Error::<T>::RarityTypeNotDetected)?;
+			let rarity_type_value =
+				pallet_uniques::Pallet::<T>::attribute(&collection_id, &nft_id, &rarity_type_key)
+					.ok_or(Error::<T>::RarityTypeNotDetected)?;
+			let generation =
+				pallet_uniques::Pallet::<T>::attribute(&collection_id, &nft_id, &generation_key)
+					.ok_or(Error::<T>::GenerationNotDetected)?;
 			let race_type: RaceType =
 				Decode::decode(&mut race.as_slice()).expect("[race] should not fail");
 			let career_type: CareerType =
 				Decode::decode(&mut career.as_slice()).expect("[career] should not fail");
-			let rarity_type: RarityType =
-				Decode::decode(&mut rarity_type_value.as_slice())
-					.expect("[rarity] should not fail");
+			let rarity_type: RarityType = Decode::decode(&mut rarity_type_value.as_slice())
+				.expect("[rarity] should not fail");
+			let generation_id: GenerationId =
+				Decode::decode(&mut generation.as_slice()).expect("[generation should not fail");
 			// Get Shell Collection next NFT ID
 			let shell_nft_id = pallet_rmrk_core::NextNftId::<T>::get(shell_collection_id);
 			// Burn Origin of Shell NFT then Mint Shell NFT
@@ -377,6 +379,7 @@ pub mod pallet {
 				None,
 				None,
 				metadata,
+				true,
 			)?;
 			// Set Rarity Type, Race and Career attributes for NFT
 			pallet_pw_nft_sale::Pallet::<T>::set_nft_attributes(
@@ -385,6 +388,7 @@ pub mod pallet {
 				rarity_type,
 				race_type,
 				career_type,
+				generation_id,
 			)?;
 
 			Self::deposit_event(Event::ShellAwakened {
@@ -409,7 +413,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			origin_of_shells: Vec<((CollectionId, NftId), u64)>,
 		) -> DispatchResult {
-			// Ensure OverlordOrigin makes call
+			// Ensure GovernanceOrigin makes call
 			let sender = ensure_signed(origin)?;
 			pallet_pw_nft_sale::Pallet::<T>::ensure_overlord(&sender)?;
 			// Iterate through Origin of Shells

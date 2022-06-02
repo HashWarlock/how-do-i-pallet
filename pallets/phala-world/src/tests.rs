@@ -8,7 +8,7 @@ use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Currency, 
 use sp_core::{crypto::AccountId32, sr25519, Pair};
 
 use crate::traits::{
-	primitives::*, CareerType, NftSaleType, RarityType, OverlordMessage, Purpose, RaceType,
+	primitives::*, CareerType, NftSaleType, OverlordMessage, Purpose, RaceType, RarityType,
 	StatusType,
 };
 use mock::{Call, Event as MockEvent, ExtBuilder, Origin, PWIncubation, PWNftSale, RmrkCore, Test};
