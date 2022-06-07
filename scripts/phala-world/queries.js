@@ -104,8 +104,8 @@ async function main() {
     {
         const originOfShellCollectionId = await api.query.pwNftSale.originOfShellCollectionId();
         if (originOfShellCollectionId.isSome) {
-            const spirit = await api.query.uniques.account.entries(user.address, originOfShellCollectionId.unwrap());
-            spirit
+
+            originOfShells
                 .map(([key, _value]) =>
                     [key.args[0].toString(), key.args[1].toNumber(), key.args[2].toNumber()]
                 ).forEach(([account, collectionId, nftId]) => {
@@ -310,6 +310,21 @@ async function main() {
             ).sort((a, b) => b.numTimesFed - a.numTimesFed);
         console.log(sortedOriginOfShellStats.slice(0,10));
     }
+    // Get total feeding stats for a NFT
+    {
+        const collectionId = 1;
+        const nftId = 0;
+        let currentEraQuery = await api.query.pwNftSale.era();
+        let currentEra = currentEraQuery.toNumber();
+        console.log(`Current Era: ${currentEra}`);
+        let totalFed = 0;
+        for (currentEra; currentEra >= 0; currentEra--) {
+            const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats(currentEra, [collectionId, nftId]);
+            totalFed += originOfShellFoodStats.toNumber()
+        }
+        console.log(`Total Fed: ${totalFed}`);
+    }
+
 }
 
 main().catch(console.error).finally(() => process.exit());
