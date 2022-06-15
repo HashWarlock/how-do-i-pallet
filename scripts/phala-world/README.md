@@ -191,6 +191,24 @@ await api.tx.pwNftSale.setStatusType(true, 'LastDayOfSale')
     .signAndSend(overlord);
 ```
 
+Similar to the previous step for the first preorder phase, we will create a script to randomly select chosen Preorder IDs. Then create an array of chosen Preorder IDs to automatically mint the preorders to the owner of the preorders.
+- `PreorderId`: A number ID mapped to the preorder.
+- `Preorders`: A Vec of chosen preorders
+```javascript
+const chosenPreorders = api.createType('Vec<u32>', [0, 1, 2, 4, 10, 6, 12, 11]);
+await api.tx.pwNftSale.mintChosenPreorders(chosenPreorders)
+    .signAndSend(overlord);
+```
+
+Lastly, create take the not chosen Preorder IDs and refund the account owners that reserved payment for the preorder.
+- `PreorderId`: A number ID mapped to the preorder.
+- `Preorders`: A Vec of chosen preorders
+```javascript
+const notChosenPreorders = api.createType('Vec<u32>', [7, 3, 5, 8, 9, 13]);
+await api.tx.pwNftSale.refundNotChosenPreorders(notChosenPreorders)
+    .signAndSend(overlord);
+```
+
 ## [5] Initiate the Incubation Phase
 Start the incubation phase so Origin of Shells can start feeding other Origin of Shells
 ```javascript
@@ -217,6 +235,7 @@ await api.tx.pwIncubation.feedOriginOfShell(1, 2).signAndSend(eve, { nonce: nonc
 await api.tx.pwIncubation.feedOriginOfShell(1, 10).signAndSend(ferdie, { nonce: nonceFerdie++ });
 console.log(`Sending food among accounts...Done`);
 ```
+
 Here is a query to get the stats per era of the times an Origin of Shell was fed.
 ```javascript
 const currentEra = await api.query.pwNftSale.era();
