@@ -25,7 +25,7 @@ pub use crate::traits::{
 use rmrk_traits::primitives::*;
 
 pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 pub use self::pallet::*;
 
@@ -85,11 +85,17 @@ pub mod pallet {
 	#[pallet::getter(fn preorders)]
 	pub type Preorders<T: Config> = StorageMap<_, Twox64Concat, PreorderId, PreorderInfoOf<T>>;
 
+	/// Owners that have made a preorder during intial preorder phase
+	#[pallet::storage]
+	#[pallet::getter(fn owner_has_preorder)]
+	pub type OwnerHasPreorder<T: Config> =
+	StorageMap<_, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
 	/// Origin of Shells inventory
 	#[pallet::storage]
 	#[pallet::getter(fn origin_of_shells_inventory)]
 	pub type OriginOfShellsInventory<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, RarityType, Blake2_128Concat, RaceType, NftSaleInfo>;
+	StorageDoubleMap<_, Blake2_128Concat, RarityType, Blake2_128Concat, RaceType, NftSaleInfo>;
 
 	/// Phala World Zero Day `BlockNumber` this will be used to determine Eras
 	#[pallet::storage]
@@ -146,11 +152,16 @@ pub mod pallet {
 	#[pallet::getter(fn is_origin_of_shells_inventory_set)]
 	pub type IsOriginOfShellsInventorySet<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+	/// Spirits Metadata
+	#[pallet::storage]
+	#[pallet::getter(fn spirits_metadata)]
+	pub type SpiritsMetadata<T: Config> = StorageValue<_, BoundedVec<u8, T::StringLimit>>;
+
 	/// Origin of Shells Metadata
 	#[pallet::storage]
 	#[pallet::getter(fn origin_of_shells_metadata)]
 	pub type OriginOfShellsMetadata<T: Config> =
-		StorageMap<_, Twox64Concat, RaceType, BoundedVec<u8, T::StringLimit>>;
+	StorageMap<_, Twox64Concat, RaceType, BoundedVec<u8, T::StringLimit>>;
 
 	/// Overlord Admin account of Phala World
 	#[pallet::storage]
@@ -169,7 +180,10 @@ pub mod pallet {
 							*era += 1;
 							*era
 						});
-						Self::deposit_event(Event::NewEra { time: current_time, era: new_era });
+						Self::deposit_event(Event::NewEra {
+							time: current_time,
+							era: new_era,
+						});
 					}
 				}
 			}
@@ -223,8 +237,8 @@ pub mod pallet {
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
-	where
-		T: pallet_uniques::Config<ClassId = CollectionId, InstanceId = NftId>,
+		where
+			T: pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 	{
 		fn build(&self) {
 			if let Some(ref zero_day) = self.zero_day {
@@ -261,14 +275,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Phala World clock zero day started
-		WorldClockStarted {
-			start_time: u64,
-		},
+		WorldClockStarted { start_time: u64 },
 		/// Start of a new era
-		NewEra {
-			time: u64,
-			era: u64,
-		},
+		NewEra { time: u64, era: u64 },
 		/// Spirit has been claimed
 		SpiritClaimed {
 			owner: T::AccountId,
@@ -290,33 +299,19 @@ pub mod pallet {
 			career: CareerType,
 		},
 		/// Spirit collection id was set
-		SpiritCollectionIdSet {
-			collection_id: CollectionId,
-		},
+		SpiritCollectionIdSet { collection_id: CollectionId },
 		/// Origin of Shell collection id was set
-		OriginOfShellCollectionIdSet {
-			collection_id: CollectionId,
-		},
+		OriginOfShellCollectionIdSet { collection_id: CollectionId },
 		/// Origin of Shell inventory updated
-		OriginOfShellInventoryUpdated {
-			rarity_type: RarityType,
-		},
+		OriginOfShellInventoryUpdated { rarity_type: RarityType },
 		/// Spirit Claims status has changed
-		ClaimSpiritStatusChanged {
-			status: bool,
-		},
+		ClaimSpiritStatusChanged { status: bool },
 		/// Purchase Rare Origin of Shells status has changed
-		PurchaseRareOriginOfShellsStatusChanged {
-			status: bool,
-		},
+		PurchaseRareOriginOfShellsStatusChanged { status: bool },
 		/// Purchase Prime Origin of Shells status changed
-		PurchasePrimeOriginOfShellsStatusChanged {
-			status: bool,
-		},
+		PurchasePrimeOriginOfShellsStatusChanged { status: bool },
 		/// Preorder Origin of Shells status has changed
-		PreorderOriginOfShellsStatusChanged {
-			status: bool,
-		},
+		PreorderOriginOfShellsStatusChanged { status: bool },
 		/// Chosen preorder was minted to owner
 		ChosenPreorderMinted {
 			preorder_id: PreorderId,
@@ -328,21 +323,21 @@ pub mod pallet {
 			owner: T::AccountId,
 		},
 		/// Last Day of Sale status has changed
-		LastDayOfSaleStatusChanged {
-			status: bool,
-		},
+		LastDayOfSaleStatusChanged { status: bool },
 		OverlordChanged {
 			old_overlord: Option<T::AccountId>,
 			new_overlord: T::AccountId,
 		},
 		/// Origin of Shells Inventory was set
-		OriginOfShellsInventoryWasSet {
-			status: bool,
-		},
+		OriginOfShellsInventoryWasSet { status: bool },
 		/// Gift a Origin of Shell for giveaway or reserved NFT to owner
 		OriginOfShellGiftedToOwner {
 			owner: T::AccountId,
 			nft_sale_type: NftSaleType,
+		},
+		/// Spirits Metadata was set
+		SpiritsMetadataSet {
+			spirits_metadata: BoundedVec<u8, T::StringLimit>,
 		},
 		/// Origin of Shells Metadata was set
 		OriginOfShellsMetadataSet {
@@ -380,11 +375,12 @@ pub mod pallet {
 		WrongRarityType,
 		SpiritCollectionNotSet,
 		SpiritCollectionIdAlreadySet,
+		SpiritsMetadataNotSet,
 		OriginOfShellCollectionNotSet,
 		OriginOfShellCollectionIdAlreadySet,
 		OriginOfShellInventoryCorrupted,
 		OriginOfShellInventoryAlreadySet,
-		OriginOfShellMetadataNotSet,
+		OriginOfShellsMetadataNotSet,
 		UnableToAddAttributes,
 		KeyTooLong,
 		NoAvailableRaceGivewayLeft,
@@ -397,8 +393,8 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
-	where
-		T: pallet_uniques::Config<ClassId = CollectionId, InstanceId = NftId>,
+		where
+			T: pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 	{
 		/// Claim a spirit for any account with at least 10 PHA in their account
 		///
@@ -408,7 +404,10 @@ pub mod pallet {
 		#[transactional]
 		pub fn claim_spirit(origin: OriginFor<T>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(CanClaimSpirits::<T>::get(), Error::<T>::SpiritClaimNotAvailable);
+			ensure!(
+				CanClaimSpirits::<T>::get(),
+				Error::<T>::SpiritClaimNotAvailable
+			);
 			let overlord = Self::overlord()?;
 			// Check Balance has minimum required
 			ensure!(
@@ -437,7 +436,10 @@ pub mod pallet {
 			signature: sr25519::Signature,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(CanClaimSpirits::<T>::get(), Error::<T>::SpiritClaimNotAvailable);
+			ensure!(
+				CanClaimSpirits::<T>::get(),
+				Error::<T>::SpiritClaimNotAvailable
+			);
 			let overlord = Self::overlord()?;
 			// verify the claim ticket
 			ensure!(
@@ -516,7 +518,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			let is_last_day_of_sale = LastDayOfSale::<T>::get();
 			ensure!(
-				CanPurchasePrimeOriginOfShells::<T>::get() || is_last_day_of_sale,
+				CanPurchasePrimeOriginOfShells::<T>::get(),
 				Error::<T>::PrimeOriginOfShellPurchaseNotAvailable
 			);
 
@@ -524,8 +526,12 @@ pub mod pallet {
 			// Check if valid message purpose is 'BuyPrimeOriginOfShells' and verify whitelist
 			// account
 			ensure!(
-				Self::verify_claim(&overlord, &sender, signature, Purpose::BuyPrimeOriginOfShells) ||
-					is_last_day_of_sale,
+				Self::verify_claim(
+					&overlord,
+					&sender,
+					signature,
+					Purpose::BuyPrimeOriginOfShells
+				) || is_last_day_of_sale,
 				Error::<T>::WhitelistVerificationFailed
 			);
 			// Get Prime Origin of Shell price
@@ -563,15 +569,25 @@ pub mod pallet {
 			career: CareerType,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			let is_last_day_of_sale = LastDayOfSale::<T>::get();
 			ensure!(
-				CanPreorderOriginOfShells::<T>::get(),
+				is_last_day_of_sale
+					|| (CanPreorderOriginOfShells::<T>::get()
+						&& !OwnerHasPreorder::<T>::get(&sender)),
 				Error::<T>::PreorderOriginOfShellNotAvailable
 			);
 			// Has Spirit Collection been set
 			let spirit_collection_id = Self::get_spirit_collection_id()?;
-			// Must have origin of shell collection created
+			// Must own a spirit NFT
 			ensure!(
 				Self::owns_nft_in_collection(&sender, spirit_collection_id),
+				Error::<T>::MustOwnSpiritToPurchase
+			);
+			let origin_of_shell_collection_id = Self::get_origin_of_shell_collection_id()?;
+			// If not the last day of sale then ensure account doesn't own an Origin of Shell
+			ensure!(
+				is_last_day_of_sale
+					|| !Self::owns_nft_in_collection(&sender, origin_of_shell_collection_id),
 				Error::<T>::OriginOfShellAlreadyPurchased
 			);
 
@@ -579,19 +595,34 @@ pub mod pallet {
 			let preorder_id =
 				<PreorderIndex<T>>::try_mutate(|n| -> Result<PreorderId, DispatchError> {
 					let id = *n;
-					ensure!(id != PreorderId::max_value(), Error::<T>::NoAvailablePreorderId);
+					ensure!(
+						id != PreorderId::max_value(),
+						Error::<T>::NoAvailablePreorderId
+					);
 					*n += 1;
 					Ok(id)
 				})?;
 			// Get Race's Origin of Shell metadata
 			let metadata = Self::get_origin_of_shell_metadata(race)?;
-			let preorder = PreorderInfo { owner: sender.clone(), race, career, metadata };
+			let preorder = PreorderInfo {
+				owner: sender.clone(),
+				race,
+				career,
+				metadata,
+			};
 			// Reserve currency for the preorder at the Prime origin_of_shell price
 			<T as pallet::Config>::Currency::reserve(&sender, T::PrimeOriginOfShellPrice::get())?;
 
 			Preorders::<T>::insert(preorder_id, preorder);
+			// Add to storage if first phase of preorders
+			if !is_last_day_of_sale {
+				OwnerHasPreorder::<T>::insert(&sender, true);
+			}
 
-			Self::deposit_event(Event::OriginOfShellPreordered { owner: sender, preorder_id });
+			Self::deposit_event(Event::OriginOfShellPreordered {
+				owner: sender,
+				preorder_id,
+			});
 
 			Ok(())
 		}
@@ -613,6 +644,8 @@ pub mod pallet {
 			Self::ensure_overlord(&sender)?;
 			// Get price of prime origin of shell
 			let origin_of_shell_price = T::PrimeOriginOfShellPrice::get();
+			// Is last day of sale
+			let is_last_day_of_sale = LastDayOfSale::<T>::get();
 			// Get iter limit
 			let iter_limit = T::IterLimit::get();
 			let mut index = 0;
@@ -641,6 +674,10 @@ pub mod pallet {
 						NftSaleType::ForSale,
 						false,
 					)?;
+					// Remove from OwnerHasPreorder from storage if not last day of sale
+					if !is_last_day_of_sale {
+						OwnerHasPreorder::<T>::remove(&preorder_owner);
+					}
 
 					Self::deposit_event(Event::ChosenPreorderMinted {
 						preorder_id,
@@ -650,7 +687,7 @@ pub mod pallet {
 				} else {
 					// Break from iterator to ensure block size doesn't grow too large. Re-call this
 					// function and it will start from where it left off.
-					break
+					break;
 				}
 			}
 
@@ -674,6 +711,8 @@ pub mod pallet {
 			Self::ensure_overlord(&sender)?;
 			// Get price of prime origin of shell
 			let origin_of_shell_price = T::PrimeOriginOfShellPrice::get();
+			// Is last day of sale
+			let is_last_day_of_sale = LastDayOfSale::<T>::get();
 			// Get iter limit
 			let iter_limit = T::IterLimit::get();
 			let mut index = 0;
@@ -688,6 +727,10 @@ pub mod pallet {
 						&preorder_info.owner,
 						origin_of_shell_price,
 					);
+					// Remove from OwnerHasPreorder from storage if not last day of sale
+					if !is_last_day_of_sale {
+						OwnerHasPreorder::<T>::remove(&preorder_info.owner);
+					}
 
 					Self::deposit_event(Event::NotChosenPreorderRefunded {
 						preorder_id,
@@ -697,15 +740,14 @@ pub mod pallet {
 				} else {
 					// Break from iterator to ensure block size doesn't grow too large. Re-call this
 					// function and it will start from where it left off.
-					break
+					break;
 				}
 			}
 
 			Ok(())
 		}
 
-		/// This is an admin only function that will be used to mint either a giveaway or a reserved
-		/// Origin of Shell NFT
+		/// This is an admin only function that will be used to mint either a giveaway or a reserved Origin of Shell NFT
 		///
 		/// Parameters:
 		/// `origin`: Expected to come from Overlord admin account
@@ -729,7 +771,10 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			Self::ensure_overlord(&sender)?;
 			// Ensure not a `NftSaleType::ForSale`
-			ensure!(nft_sale_type != NftSaleType::ForSale, Error::<T>::WrongNftSaleType);
+			ensure!(
+				nft_sale_type != NftSaleType::ForSale,
+				Error::<T>::WrongNftSaleType
+			);
 			// Mint origin of shell
 			Self::do_mint_origin_of_shell_nft(
 				sender,
@@ -743,7 +788,10 @@ pub mod pallet {
 				false,
 			)?;
 
-			Self::deposit_event(Event::OriginOfShellGiftedToOwner { owner, nft_sale_type });
+			Self::deposit_event(Event::OriginOfShellGiftedToOwner {
+				owner,
+				nft_sale_type,
+			});
 
 			Ok(())
 		}
@@ -763,7 +811,10 @@ pub mod pallet {
 			let old_overlord = <Overlord<T>>::get();
 
 			Overlord::<T>::put(&new_overlord);
-			Self::deposit_event(Event::OverlordChanged { old_overlord, new_overlord });
+			Self::deposit_event(Event::OverlordChanged {
+				old_overlord,
+				new_overlord,
+			});
 			// GameOverlord user does not pay a fee
 			Ok(Pays::No.into())
 		}
@@ -785,7 +836,9 @@ pub mod pallet {
 			let zero_day = now - (now % T::SecondsPerEra::get());
 
 			ZeroDay::<T>::put(zero_day);
-			Self::deposit_event(Event::WorldClockStarted { start_time: zero_day });
+			Self::deposit_event(Event::WorldClockStarted {
+				start_time: zero_day,
+			});
 
 			Ok(Pays::No.into())
 		}
@@ -810,12 +863,15 @@ pub mod pallet {
 			// Match StatusType and call helper function to set status
 			match status_type {
 				StatusType::ClaimSpirits => Self::set_claim_spirits_status(status)?,
-				StatusType::PurchaseRareOriginOfShells =>
-					Self::set_purchase_rare_origin_of_shells_status(status)?,
-				StatusType::PurchasePrimeOriginOfShells =>
-					Self::set_purchase_prime_origin_of_shells_status(status)?,
-				StatusType::PreorderOriginOfShells =>
-					Self::set_preorder_origin_of_shells_status(status)?,
+				StatusType::PurchaseRareOriginOfShells => {
+					Self::set_purchase_rare_origin_of_shells_status(status)?
+				}
+				StatusType::PurchasePrimeOriginOfShells => {
+					Self::set_purchase_prime_origin_of_shells_status(status)?
+				}
+				StatusType::PreorderOriginOfShells => {
+					Self::set_preorder_origin_of_shells_status(status)?
+				}
 				StatusType::LastDayOfSale => Self::set_last_day_of_sale_status(status)?,
 			}
 			Ok(Pays::No.into())
@@ -861,7 +917,10 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			Self::ensure_overlord(&sender)?;
 			// Ensure they are updating the RarityType::Prime
-			ensure!(rarity_type == RarityType::Prime, Error::<T>::WrongRarityType);
+			ensure!(
+				rarity_type == RarityType::Prime,
+				Error::<T>::WrongRarityType
+			);
 			// Mutate the existing storage for the Prime Origin of Shells
 			Self::update_nft_sale_info(
 				rarity_type,
@@ -970,14 +1029,35 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Privileged function to set the metadata for the Spirits in the StorageValue
+		/// `SpiritMetadata` where the value is a `BoundedVec<u8, T::StringLimit`.
+		///
+		/// Parameters:
+		/// - `origin`: Expected to be called from the Overlord account
+		/// - `spirits_metadata`: `BoundedVec<u8, T::StringLimit>` to be added in storage
+		#[pallet::weight(0)]
+		pub fn set_spirits_metadata(
+			origin: OriginFor<T>,
+			spirits_metadata: BoundedVec<u8, T::StringLimit>,
+		) -> DispatchResultWithPostInfo {
+			// Ensure Overlord account makes call
+			let sender = ensure_signed(origin.clone())?;
+			Self::ensure_overlord(&sender)?;
+			// Set Spirits Metadata
+			SpiritsMetadata::<T>::put(spirits_metadata.clone());
+
+			Self::deposit_event(Event::SpiritsMetadataSet { spirits_metadata });
+
+			Ok(Pays::No.into())
+		}
+
 		/// Privileged function to set the metadata for the Origin of Shells in the StorageMap
 		/// `OriginOfShellsMetadata` where the key is a tuple of `(RaceType, CareerType)` with a
 		/// value of a `BoundedVec<u8, T::StringLimit`.
 		///
 		/// Parameters:
 		/// - `origin`: Expected to be called from the Overlord account
-		/// - `origin_of_shells_metadata`: A Vec of `((RaceType, CareerType), BoundedVec<u8,
-		///   T::StringLimit>>)` to be added in storage
+		/// - `origin_of_shells_metadata`: A Vec of `((RaceType, CareerType), BoundedVec<u8, T::StringLimit>>)` to be added in storage
 		#[pallet::weight(0)]
 		pub fn set_origin_of_shells_metadata(
 			origin: OriginFor<T>,
@@ -992,7 +1072,9 @@ pub mod pallet {
 				OriginOfShellsMetadata::<T>::insert(race, metadata);
 			}
 
-			Self::deposit_event(Event::OriginOfShellsMetadataSet { origin_of_shells_metadata });
+			Self::deposit_event(Event::OriginOfShellsMetadataSet {
+				origin_of_shells_metadata,
+			});
 
 			Ok(Pays::No.into())
 		}
@@ -1000,8 +1082,8 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T>
-where
-	T: pallet_uniques::Config<ClassId = CollectionId, InstanceId = NftId>,
+	where
+		T: pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 {
 	/// Verify the sender making the claim is the Account signed by the Overlord admin account and
 	/// verify the purpose of the `OverlordMessage` which will be either `RedeemSpirit` or
@@ -1019,7 +1101,10 @@ where
 		signature: sr25519::Signature,
 		purpose: Purpose,
 	) -> bool {
-		let message = OverlordMessage { account: sender.clone(), purpose };
+		let message = OverlordMessage {
+			account: sender.clone(),
+			purpose,
+		};
 		let encoded_message = Encode::encode(&message);
 		let encode_overlord = T::AccountId::encode(overlord);
 		let h256_overlord = H256::from_slice(&encode_overlord);
@@ -1225,10 +1310,12 @@ where
 	) {
 		OriginOfShellsInventory::<T>::mutate(rarity_type, race, |nft_sale_info| {
 			if let Some(nft_sale_info) = nft_sale_info {
-				nft_sale_info.race_for_sale_count =
-					nft_sale_info.race_for_sale_count.saturating_add(for_sale_count);
-				nft_sale_info.race_giveaway_count =
-					nft_sale_info.race_giveaway_count.saturating_add(giveaway_count);
+				nft_sale_info.race_for_sale_count = nft_sale_info
+					.race_for_sale_count
+					.saturating_add(for_sale_count);
+				nft_sale_info.race_giveaway_count = nft_sale_info
+					.race_giveaway_count
+					.saturating_add(giveaway_count);
 			}
 		});
 	}
@@ -1246,8 +1333,8 @@ where
 			!Self::owns_nft_in_collection(&sender, spirit_collection_id),
 			Error::<T>::SpiritAlreadyClaimed
 		);
-		// Empty metadata
-		let metadata = Self::get_empty_metadata();
+		// Get Spirits metadata
+		let metadata = SpiritsMetadata::<T>::get().ok_or(Error::<T>::SpiritsMetadataNotSet)?;
 		// Get NFT ID to be minted
 		let spirit_nft_id = pallet_rmrk_core::NextNftId::<T>::get(spirit_collection_id);
 		// Mint new Spirit and transfer to sender
@@ -1256,12 +1343,13 @@ where
 		// the NFT from being transferred by the owner.
 		pallet_rmrk_core::Pallet::<T>::mint_nft(
 			Origin::<T>::Signed(overlord.clone()).into(),
-			sender.clone(),
+			Some(sender.clone()),
 			spirit_collection_id,
 			None,
 			None,
 			metadata,
 			true,
+			None,
 		)?;
 		// Freeze NFT so it cannot be transferred
 		pallet_uniques::Pallet::<T>::freeze(
@@ -1330,12 +1418,13 @@ where
 		// Mint Origin of Shell and transfer Origin of Shell to new owner
 		pallet_rmrk_core::Pallet::<T>::mint_nft(
 			Origin::<T>::Signed(overlord.clone()).into(),
-			sender.clone(),
+			Some(sender.clone()),
 			origin_of_shell_collection_id,
 			None,
 			None,
 			metadata,
 			true,
+			None,
 		)?;
 		// Set Rarity Type, Race and Career attributes for NFT
 		Self::set_nft_attributes(
@@ -1389,16 +1478,24 @@ where
 		let overlord = Self::overlord()?;
 
 		let rarity_type_key: BoundedVec<u8, T::KeyLimit> = Self::to_boundedvec_key("rarity")?;
-		let rarity_type_value = rarity_type.encode().try_into().expect("[rarity] should not fail");
+		let rarity_type_value = rarity_type
+			.encode()
+			.try_into()
+			.expect("[rarity] should not fail");
 
 		let race_key: BoundedVec<u8, T::KeyLimit> = Self::to_boundedvec_key("race")?;
 		let race_value = race.encode().try_into().expect("[race] should not fail");
 
 		let career_key = Self::to_boundedvec_key("career")?;
-		let career_value = career.encode().try_into().expect("[career] should not fail");
+		let career_value = career
+			.encode()
+			.try_into()
+			.expect("[career] should not fail");
 		let generation_key = Self::to_boundedvec_key("generation")?;
-		let generation_value =
-			generation.encode().try_into().expect("[generation] should not fail");
+		let generation_value = generation
+			.encode()
+			.try_into()
+			.expect("[generation] should not fail");
 
 		// Set Rarity Type
 		pallet_uniques::Pallet::<T>::set_attribute(
@@ -1495,13 +1592,13 @@ where
 					match nft_sale_type {
 						NftSaleType::ForSale => {
 							nft_sale_info.race_for_sale_count -= 1;
-						},
+						}
 						NftSaleType::Giveaway => {
 							nft_sale_info.race_giveaway_count -= 1;
-						},
+						}
 						NftSaleType::Reserved => {
 							nft_sale_info.race_reserved_count -= 1;
-						},
+						}
 					}
 				}
 				Ok(())
@@ -1523,23 +1620,26 @@ where
 		if let Some(nft_sale_info) = OriginOfShellsInventory::<T>::get(rarity_type, race) {
 			match nft_sale_type {
 				NftSaleType::ForSale => {
-					ensure!(nft_sale_info.race_for_sale_count > 0, Error::<T>::RaceMintMaxReached)
-				},
+					ensure!(
+						nft_sale_info.race_for_sale_count > 0,
+						Error::<T>::RaceMintMaxReached
+					)
+				}
 				NftSaleType::Giveaway => {
 					ensure!(
 						nft_sale_info.race_giveaway_count > 0,
 						Error::<T>::NoAvailableRaceGivewayLeft
 					)
-				},
+				}
 				NftSaleType::Reserved => {
 					ensure!(
 						nft_sale_info.race_reserved_count > 0,
 						Error::<T>::NoAvailableRaceReservedLeft
 					)
-				},
+				}
 			}
 		} else {
-			return Err(Error::<T>::OriginOfShellInventoryCorrupted.into())
+			return Err(Error::<T>::OriginOfShellInventoryCorrupted.into());
 		}
 
 		Ok(())
@@ -1566,16 +1666,14 @@ where
 	/// `collection_id`: Collection id to check if sender owns a NFT in the collection
 	/// `error`: Error type to throw if there is an error detected
 	pub fn owns_nft_in_collection(sender: &T::AccountId, collection_id: CollectionId) -> bool {
-		pallet_uniques::Pallet::<T>::owned_in_class(&collection_id, sender).count() > 0
+		pallet_uniques::Pallet::<T>::owned_in_collection(&collection_id, sender).count() > 0
 	}
 
 	pub fn to_boundedvec_key(name: &str) -> Result<BoundedVec<u8, T::KeyLimit>, Error<T>> {
-		name.as_bytes().to_vec().try_into().map_err(|_| Error::<T>::KeyTooLong)
-	}
-
-	/// Helper function to get empty metadata boundedvec
-	pub(crate) fn get_empty_metadata() -> BoundedVec<u8, T::StringLimit> {
-		Default::default()
+		name.as_bytes()
+			.to_vec()
+			.try_into()
+			.map_err(|_| Error::<T>::KeyTooLong)
 	}
 
 	/// Helper function to get origin of shells metadata boundedvec
@@ -1584,7 +1682,7 @@ where
 	) -> Result<BoundedVec<u8, T::StringLimit>, Error<T>> {
 		let metadata = OriginOfShellsMetadata::<T>::get(race);
 		match metadata {
-			None => Err(Error::<T>::OriginOfShellMetadataNotSet),
+			None => Err(Error::<T>::OriginOfShellsMetadataNotSet),
 			Some(metadata) => Ok(metadata),
 		}
 	}

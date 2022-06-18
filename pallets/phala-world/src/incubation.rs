@@ -1,9 +1,7 @@
 //! Phala World Incubation Pallet
 
-pub use crate::{
-	pallet_pw_nft_sale,
-	traits::{primitives::*, CareerType, FoodInfo, RaceType, RarityType},
-};
+pub use crate::pallet_pw_nft_sale;
+pub use crate::traits::{primitives::*, CareerType, FoodInfo, RaceType, RarityType};
 use codec::Decode;
 use frame_support::{
 	ensure,
@@ -31,7 +29,7 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + pallet_rmrk_core::Config + pallet_pw_nft_sale::Config
+	frame_system::Config + pallet_rmrk_core::Config + pallet_pw_nft_sale::Config
 	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -83,7 +81,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn hatch_times)]
 	pub type HatchTimes<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, CollectionId, Blake2_128Concat, NftId, u64>;
+	StorageDoubleMap<_, Blake2_128Concat, CollectionId, Blake2_128Concat, NftId, u64>;
 
 	/// A bool value to determine if accounts can start incubation of Origin of Shells
 	#[pallet::storage]
@@ -100,7 +98,11 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// CanStartIncubation status changed and set official hatch time
-		CanStartIncubationStatusChanged { status: bool, start_time: u64, official_hatch_time: u64 },
+		CanStartIncubationStatusChanged {
+			status: bool,
+			start_time: u64,
+			official_hatch_time: u64,
+		},
 		/// Origin of Shell owner has initiated the incubation sequence
 		StartedIncubation {
 			collection_id: CollectionId,
@@ -125,7 +127,11 @@ pub mod pallet {
 		/// Shell Collection ID is set
 		ShellCollectionIdSet { collection_id: CollectionId },
 		/// Shell has been awakened from an origin_of_shell being hatched and burned
-		ShellAwakened { collection_id: CollectionId, nft_id: NftId, owner: T::AccountId },
+		ShellAwakened {
+			collection_id: CollectionId,
+			nft_id: NftId,
+			owner: T::AccountId,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -155,8 +161,8 @@ pub mod pallet {
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
-	where
-		T: pallet_uniques::Config<ClassId = CollectionId, InstanceId = NftId>,
+		where
+			T: pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 	{
 		/// Once users have received their origin_of_shells and the start incubation event has been
 		/// triggered, they can start the incubation process and a timer will start for the
@@ -176,14 +182,20 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			// Check if IncubationPhase is enabled
-			ensure!(CanStartIncubation::<T>::get(), Error::<T>::StartIncubationNotAvailable);
+			ensure!(
+				CanStartIncubation::<T>::get(),
+				Error::<T>::StartIncubationNotAvailable
+			);
 			// Ensure that the collection is an Origin of Shell Collection
 			ensure!(
 				Self::is_origin_of_shell_collection_id(collection_id),
 				Error::<T>::WrongCollectionId
 			);
 			// Ensure sender is owner
-			ensure!(Self::is_owner(&sender, collection_id, nft_id), Error::<T>::NotOwner);
+			ensure!(
+				Self::is_owner(&sender, collection_id, nft_id),
+				Error::<T>::NotOwner
+			);
 			// Ensure incubation process hasn't been started already
 			ensure!(
 				!HatchTimes::<T>::contains_key(collection_id, nft_id),
@@ -223,7 +235,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			// Check if Incubation Phase has started
-			ensure!(CanStartIncubation::<T>::get(), Error::<T>::StartIncubationNotAvailable);
+			ensure!(
+				CanStartIncubation::<T>::get(),
+				Error::<T>::StartIncubationNotAvailable
+			);
 			// Ensure that the collection is an Origin of Shell Collection
 			ensure!(
 				Self::is_origin_of_shell_collection_id(collection_id),
@@ -231,10 +246,13 @@ pub mod pallet {
 			);
 			// Ensure that Origin of Shell exists or is not past the hatch time
 			let hatch_time = Self::get_hatch_time(collection_id, nft_id)?;
-			ensure!(!Self::can_hatch(hatch_time), Error::<T>::CannotSendFoodToOriginOfShell);
+			ensure!(
+				!Self::can_hatch(hatch_time),
+				Error::<T>::CannotSendFoodToOriginOfShell
+			);
 			// Check if account owns an Origin of Shell NFT
 			ensure!(
-				pallet_uniques::pallet::Pallet::<T>::owned_in_class(&collection_id, &sender)
+				pallet_uniques::pallet::Pallet::<T>::owned_in_collection(&collection_id, &sender)
 					.count() > 0,
 				Error::<T>::CannotSendFoodToOriginOfShell
 			);
@@ -249,8 +267,9 @@ pub mod pallet {
 			FoodByOwners::<T>::try_mutate(&sender, |food_info| -> DispatchResult {
 				let mut new_food_info = match food_info {
 					None => Self::get_new_food_info(current_era),
-					Some(food_info) if current_era > food_info.era =>
-						Self::get_new_food_info(current_era),
+					Some(food_info) if current_era > food_info.era => {
+						Self::get_new_food_info(current_era)
+					}
 					Some(food_info) => {
 						// Ensure sender hasn't fed the Origin of Shell 2 times
 						ensure!(
@@ -262,10 +281,13 @@ pub mod pallet {
 							Error::<T>::AlreadySentFoodTwice
 						);
 						food_info.clone()
-					},
+					}
 				};
 				ensure!(
-					new_food_info.origin_of_shells_fed.try_push((collection_id, nft_id)).is_ok(),
+					new_food_info
+						.origin_of_shells_fed
+						.try_push((collection_id, nft_id))
+						.is_ok(),
 					Error::<T>::FoodInfoUpdateError
 				);
 				*food_info = Some(new_food_info);
@@ -280,7 +302,11 @@ pub mod pallet {
 				num_of_times_fed + 1,
 			);
 
-			Self::deposit_event(Event::OriginOfShellReceivedFood { collection_id, nft_id, sender });
+			Self::deposit_event(Event::OriginOfShellReceivedFood {
+				collection_id,
+				nft_id,
+				sender,
+			});
 
 			Ok(())
 		}
@@ -305,7 +331,10 @@ pub mod pallet {
 			let sender = ensure_signed(origin.clone())?;
 			pallet_pw_nft_sale::pallet::Pallet::<T>::ensure_overlord(&sender)?;
 			// Check if Incubation Phase has started
-			ensure!(CanStartIncubation::<T>::get(), Error::<T>::StartIncubationNotAvailable);
+			ensure!(
+				CanStartIncubation::<T>::get(),
+				Error::<T>::StartIncubationNotAvailable
+			);
 			// Ensure that the collection is an Origin of Shell Collection
 			ensure!(
 				Self::is_origin_of_shell_collection_id(collection_id),
@@ -317,7 +346,10 @@ pub mod pallet {
 			// Check if HatchTimes is less than or equal to current Timestamp
 			// Ensure that Origin of Shell exists or is not past the hatch time
 			let hatch_time = Self::get_hatch_time(collection_id, nft_id)?;
-			ensure!(Self::can_hatch(hatch_time), Error::<T>::CannotHatchOriginOfShell);
+			ensure!(
+				Self::can_hatch(hatch_time),
+				Error::<T>::CannotHatchOriginOfShell
+			);
 			// Check if Shell Collection ID is set
 			let shell_collection_id = Self::get_shell_collection_id()?;
 			// Get race, key and Rarity Type before burning origin of shell NFT
@@ -343,7 +375,7 @@ pub mod pallet {
 			let rarity_type: RarityType = Decode::decode(&mut rarity_type_value.as_slice())
 				.expect("[rarity] should not fail");
 			let generation_id: GenerationId =
-				Decode::decode(&mut generation.as_slice()).expect("[generation should not fail");
+				Decode::decode(&mut generation.as_slice()).expect("[generation] should not fail");
 			// Get Shell Collection next NFT ID
 			let shell_nft_id = pallet_rmrk_core::NextNftId::<T>::get(shell_collection_id);
 			// Burn Origin of Shell NFT then Mint Shell NFT
@@ -371,15 +403,22 @@ pub mod pallet {
 				Some(nft_id),
 				rarity_type_key,
 			)?;
+			pallet_uniques::Pallet::<T>::clear_attribute(
+				origin.clone(),
+				collection_id,
+				Some(nft_id),
+				generation_key,
+			)?;
 			// Mint Shell NFT to Overlord to add attributes and resource before sending to owner
 			pallet_rmrk_core::Pallet::<T>::mint_nft(
 				origin.clone(),
-				owner.clone(),
+				Some(owner.clone()),
 				shell_collection_id,
 				None,
 				None,
 				metadata,
 				true,
+				None,
 			)?;
 			// Set Rarity Type, Race and Career attributes for NFT
 			pallet_pw_nft_sale::Pallet::<T>::set_nft_attributes(
@@ -499,8 +538,8 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T>
-where
-	T: pallet_uniques::Config<ClassId = CollectionId, InstanceId = NftId>,
+	where
+		T: pallet_uniques::Config<CollectionId = CollectionId, ItemId = NftId>,
 {
 	/// Helper function to ensure that the sender owns the origin of shell NFT.
 	///
@@ -523,7 +562,7 @@ where
 	/// - `collection_id`: Collection ID to check
 	fn is_origin_of_shell_collection_id(collection_id: CollectionId) -> bool {
 		if let Some(origin_of_shell_collection_id) =
-			pallet_pw_nft_sale::OriginOfShellCollectionId::<T>::get()
+		pallet_pw_nft_sale::OriginOfShellCollectionId::<T>::get()
 		{
 			collection_id == origin_of_shell_collection_id
 		} else {
@@ -561,6 +600,9 @@ where
 	fn get_new_food_info(
 		era: EraId,
 	) -> FoodInfo<BoundedVec<(CollectionId, NftId), <T as Config>::FoodPerEra>> {
-		FoodInfo { era, origin_of_shells_fed: Default::default() }
+		FoodInfo {
+			era,
+			origin_of_shells_fed: Default::default(),
+		}
 	}
 }

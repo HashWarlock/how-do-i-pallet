@@ -1,16 +1,12 @@
-use super::*;
-use crate::{pallet_pw_incubation, pallet_pw_nft_sale, traits};
+use crate::{pallet_pw_incubation, pallet_pw_nft_sale};
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{
-		AsEnsureOriginWithArg, ConstU32, ConstU64, Everything, GenesisBuild, OnFinalize,
-		OnInitialize,
-	},
+	traits::{AsEnsureOriginWithArg, ConstU32, Everything, GenesisBuild, OnFinalize},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
-use sp_core::{crypto::AccountId32, sr25519::Signature, Pair, Public, H256};
+use sp_core::{crypto::AccountId32, H256};
 
 use sp_runtime::{
 	testing::Header,
@@ -27,7 +23,7 @@ pub const BLOCK_TIME: u64 = 1_000;
 pub const INIT_TIMESTAMP_SECONDS: u64 = 30;
 pub const BLOCK_TIME_SECONDS: u64 = 1;
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+construct_runtime!(
 	pub enum Test where
 		Block = Block,
 		NodeBlock = Block,
@@ -57,7 +53,7 @@ impl frame_system::Config for Test {
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
-	type BlockNumber = u64;
+	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
@@ -99,9 +95,10 @@ parameter_types! {
 	pub MaxMetadataLength: u32 = 256;
 	pub const MaxRecursions: u32 = 10;
 	pub const ResourceSymbolLimit: u32 = 10;
-	pub const PartsLimit: u32 = 10;
-	pub const MaxPriorities: u32 = 3;
+	pub const PartsLimit: u32 = 25;
+	pub const MaxPriorities: u32 = 25;
 	pub const CollectionSymbolLimit: u32 = 100;
+	pub const MaxResourcesOnMint: u32 = 100;
 }
 
 impl pallet_rmrk_core::Config for Test {
@@ -112,33 +109,34 @@ impl pallet_rmrk_core::Config for Test {
 	type PartsLimit = PartsLimit;
 	type MaxPriorities = MaxPriorities;
 	type CollectionSymbolLimit = CollectionSymbolLimit;
+	type MaxResourcesOnMint = MaxResourcesOnMint;
 }
 
 parameter_types! {
-	pub const ClassDeposit: Balance = 10_000 * PHA; // 1 UNIT deposit to create asset class
-	pub const InstanceDeposit: Balance = 100 * PHA; // 1/100 UNIT deposit to create asset instance
-	pub const KeyLimit: u32 = 32;	// Max 32 bytes per key
-	pub const ValueLimit: u32 = 64;	// Max 64 bytes per value
+	pub const CollectionDeposit: Balance = 10_000 * PHA; // 1 UNIT deposit to create collection
+	pub const ItemDeposit: Balance = 100 * PHA; // 1/100 UNIT deposit to create item
+	pub const StringLimit: u32 = 50;
+	pub const KeyLimit: u32 = 32; // Max 32 bytes per key
+	pub const ValueLimit: u32 = 256; // Max 64 bytes per value
 	pub const UniquesMetadataDepositBase: Balance = 1000 * PHA;
 	pub const AttributeDepositBase: Balance = 100 * PHA;
 	pub const DepositPerByte: Balance = 10 * PHA;
-	pub const UniquesStringLimit: u32 = 32;
 }
 
 impl pallet_uniques::Config for Test {
 	type Event = Event;
-	type ClassId = u32;
-	type InstanceId = u32;
+	type CollectionId = u32;
+	type ItemId = u32;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
 	type Locker = pallet_rmrk_core::Pallet<Test>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = UniquesMetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
-	type StringLimit = UniquesStringLimit;
+	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
 	type ValueLimit = ValueLimit;
 	type WeightInfo = ();
@@ -251,7 +249,9 @@ impl Default for ExtBuilder {
 // Build genesis storage according to the mock runtime.
 impl ExtBuilder {
 	pub fn build(self, overlord_key: AccountId32) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
 
 		pallet_pw_nft_sale::GenesisConfig::<Test> {
 			zero_day: None,
@@ -266,8 +266,8 @@ impl ExtBuilder {
 			origin_of_shell_collection_id: None,
 			is_origin_of_shells_inventory_set: false,
 		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
@@ -277,8 +277,8 @@ impl ExtBuilder {
 				(CHARLIE, 150_000 * PHA),
 			],
 		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| {
