@@ -309,24 +309,6 @@ impl pallet_sudo::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxRecursions: u32 = 10;
-	pub const ResourceSymbolLimit: u32 = 10;
-	pub const PartsLimit: u32 = 3;
-	pub const MaxPriorities: u32 = 3;
-	pub const CollectionSymbolLimit: u32 = 100;
-}
-
-impl pallet_rmrk_core::Config for Runtime {
-	type Event = Event;
-	type ProtocolOrigin = frame_system::EnsureRoot<AccountId>;
-	type MaxRecursions = MaxRecursions;
-	type ResourceSymbolLimit = ResourceSymbolLimit;
-	type PartsLimit = PartsLimit;
-	type MaxPriorities = MaxPriorities;
-	type CollectionSymbolLimit = CollectionSymbolLimit;
-}
-
-parameter_types! {
 	pub const SecondsPerEra: u64 = SECONDS_PER_DAY;
 	pub const MinBalanceToClaimSpirit: Balance = 10 * DOLLARS;
 	pub const LegendaryOriginOfShellPrice: Balance = 15_000 * DOLLARS;
@@ -369,8 +351,8 @@ impl pallet_rmrk_market::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ClassDeposit: Balance = 100 * DOLLARS;
-	pub const InstanceDeposit: Balance = DOLLARS;
+	pub const CollectionDeposit: Balance = 100 * DOLLARS;
+    pub const ItemDeposit: Balance = 1 * DOLLARS;
 	pub const KeyLimit: u32 = 32;
 	pub const ValueLimit: u32 = 256;
 	pub const UniquesMetadataDepositBase: Balance = 100 * DOLLARS;
@@ -381,29 +363,36 @@ parameter_types! {
 	pub const MaxCollectionsEquippablePerPart: u32 = 100;
 }
 
-impl pallet_rmrk_equip::Config for Runtime {
-	type Event = Event;
-	type MaxPropertiesPerTheme = MaxPropertiesPerTheme;
-	type MaxCollectionsEquippablePerPart = MaxCollectionsEquippablePerPart;
-}
-
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
-	type ClassId = u32;
-	type InstanceId = u32;
+	type CollectionId = u32;
+	type ItemId = u32;
 	type Currency = Balances;
-	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type ForceOrigin = EnsureRoot<AccountId>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Locker = pallet_rmrk_core::Pallet<Runtime>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
-	type MetadataDepositBase = UniquesMetadataDepositBase;
-	type AttributeDepositBase = AttributeDepositBase;
-	type DepositPerByte = DepositPerByte;
-	type StringLimit = UniquesStringLimit;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = MetadataDepositBase;
+	type DepositPerByte = MetadataDepositPerByte;
+	type StringLimit = StringLimit;
 	type KeyLimit = KeyLimit;
 	type ValueLimit = ValueLimit;
-	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_rmrk_core::Config for Runtime {
+	type Event = Event;
+	type ProtocolOrigin = EnsureRoot<AccountId>;
+	type MaxRecursions = MaxRecursions;
+	type ResourceSymbolLimit = ResourceSymbolLimit;
+	type PartsLimit = PartsLimit;
+	type MaxPriorities = MaxPriorities;
+	type CollectionSymbolLimit = CollectionSymbolLimit;
+	type MaxResourcesOnMint = MaxResourcesOnMint;
 }
 
 impl pallet_utility::Config for Runtime {
@@ -482,25 +471,12 @@ impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
 		if let Call::Uniques(uniques_method) = call {
 			return match uniques_method {
-				pallet_uniques::Call::approve_transfer { .. }
-				| pallet_uniques::Call::burn { .. }
-				| pallet_uniques::Call::cancel_approval { .. }
-				| pallet_uniques::Call::clear_class_metadata { .. }
-				| pallet_uniques::Call::clear_metadata { .. }
-				| pallet_uniques::Call::create { .. }
-				| pallet_uniques::Call::destroy { .. }
-				| pallet_uniques::Call::force_asset_status { .. }
-				| pallet_uniques::Call::force_create { .. }
-				| pallet_uniques::Call::freeze_class { .. }
-				| pallet_uniques::Call::mint { .. }
-				| pallet_uniques::Call::redeposit { .. }
-				| pallet_uniques::Call::set_class_metadata { .. }
-				| pallet_uniques::Call::set_metadata { .. }
-				| pallet_uniques::Call::thaw_class { .. }
-				| pallet_uniques::Call::transfer { .. }
-				| pallet_uniques::Call::transfer_ownership { .. }
-				| pallet_uniques::Call::__Ignore { .. } => false,
-				_ => true,
+				pallet_uniques::Call::freeze { .. }
+				| pallet_uniques::Call::thaw { .. }
+				| pallet_uniques::Call::set_team { .. }
+				| pallet_uniques::Call::set_accept_ownership { .. }
+				| pallet_uniques::Call::__Ignore { .. } => true,
+				_ => false,
 			};
 		}
 
