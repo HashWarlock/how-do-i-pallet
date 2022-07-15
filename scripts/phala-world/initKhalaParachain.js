@@ -1,7 +1,7 @@
 require('dotenv').config();
+const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
-const { stringToU8a, u8aToHex } = require('@polkadot/util');
 
 const alicePrivkey = process.env.ROOT_PRIVKEY;
 const bobPrivkey = process.env.USER_PRIVKEY;
@@ -38,18 +38,27 @@ async function getNonce(khalaApi, address) {
 
 async function waitTxAccepted(khalaApi, account, nonce) {
     await checkUntil(async () => {
-        return await getNonce(khalaApi, account) == nonce + 1;
+        return await getNonce(khalaApi, account) === nonce + 1;
     });
 }
 
 // Transfer balance to an account
-async function transferPha(khalaApi, sender, senderNonce, recipients, amount) {
+async function transferPha(khalaApi, sender, recipients, amount) {
+    let senderNonce = await getNonce(khalaApi, sender.address);
     return new Promise(async (resolve) => {
         console.log(`Starting transfers...`);
         for (const recipient of recipients) {
             const index = recipients.indexOf(recipient);
             console.log(`[${index}]: Transferring... ${amount.toString()} PHA from ${sender.address} to ${recipient.address}`);
-            await khalaApi.tx.balances.transfer(recipient, amount).signAndSend(sender, senderNonce++)
+            const unsub = await khalaApi.tx.balances.transfer(recipient.address, amount).signAndSend(sender, {nonce: senderNonce++}, (result) => {
+                if (result.status.isInBlock) {
+                    console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+                } else if (result.status.isFinalized) {
+                    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                    unsub();
+                    resolve();
+                }
+            });
             console.log(`[${index}]: Transferring...DONE`);
         }
         await waitTxAccepted(khalaApi, sender.address, senderNonce - 1);
@@ -57,61 +66,135 @@ async function transferPha(khalaApi, sender, senderNonce, recipients, amount) {
 }
 
 // Set Overlord Account with Sudo account
-async function setOverlordAccount(khalaApi, sender, senderNonce, newOverlord) {
+async function setOverlordAccount(khalaApi, sender, newOverlord) {
+    let senderNonce = await getNonce(khalaApi, sender.address);
     return new Promise(async (resolve) => {
         console.log("Setting new overlord...");
-        await khalaApi.tx.sudo.sudo(
+        const unsub = await khalaApi.tx.sudo.sudo(
             khalaApi.tx.pwNftSale.setOverlord(newOverlord.address)
-        ).signAndSend(sender, {nonce: senderNonce++});
+        ).signAndSend(sender, {nonce: senderNonce++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub();
+                resolve();
+            }
+        });
         await waitTxAccepted(khalaApi, sender.address, senderNonce - 1);
     });
 }
 
 // Initialize Phala World Clock, create Spirits, Origin Shell & Shell Collections & set NFT inventory with Overlord account
-async function initPhalaWorld(khalaApi, overlord, nonceOverlord) {
+async function initPhalaWorld(khalaApi, overlord) {
+    let nonceOverlord = await getNonce(khalaApi, overlord.address);
     return new Promise(async (resolve) => {
         console.log("Initialize Phala World Clock...");
-        await khalaApi.tx.pwNftSale.initializeWorldClock()
-            .signAndSend(overlord, {nonce: nonceOverlord++});
+        const unsub = await khalaApi.tx.pwNftSale.initializeWorldClock()
+            .signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+                if (result.status.isInBlock) {
+                    console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+                } else if (result.status.isFinalized) {
+                    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                    unsub();
+                    resolve();
+                }
+            });
         await waitTxAccepted(khalaApi, overlord.address, nonceOverlord - 1);
         console.log("Initialize Phala World Clock...Done");
         console.log("Create Spirits, Origin of Shells & Shells Collections...");
         // mint spirits NFTs with overlord
         // collection 0: spirits
-        await khalaApi.tx.pwNftSale.pwCreateCollection(
+        const unsub2 = await khalaApi.tx.pwNftSale.pwCreateCollection(
             'Phala World Spirits Collection',
             null,
             'PWSPRT'
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub2();
+                resolve();
+            }
+        });
         // set the spirits collection id
-        await khalaApi.tx.pwNftSale.setSpiritCollectionId(
+        const unsub3 = await khalaApi.tx.pwNftSale.setSpiritCollectionId(
             0
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub3();
+                resolve();
+            }
+        });
         // collection 1: origin of shells
-        await khalaApi.tx.pwNftSale.pwCreateCollection(
+        const unsub4 = await khalaApi.tx.pwNftSale.pwCreateCollection(
             'Phala World Origin of Shells Collection',
             null,
             'PWOAS'
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub4();
+                resolve();
+            }
+        });
         // set the origin of shell collection id
-        await khalaApi.tx.pwNftSale.setOriginOfShellCollectionId(
+        const unsub5 = await khalaApi.tx.pwNftSale.setOriginOfShellCollectionId(
             1
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub5();
+                resolve();
+            }
+        });
         // collection 2: shells
-        await khalaApi.tx.pwNftSale.pwCreateCollection(
+        const unsub6 = await khalaApi.tx.pwNftSale.pwCreateCollection(
             'Phala World Shells Collection',
             null,
             'PWSHL'
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub6();
+                resolve();
+            }
+        });
         // set the origin of shell collection id
-        await khalaApi.tx.pwIncubation.setShellCollectionId(
+        const unsub7 = await khalaApi.tx.pwIncubation.setShellCollectionId(
             2
-        ).signAndSend(overlord, {nonce: nonceOverlord++});
+        ).signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                unsub7();
+                resolve();
+            }
+        });
         console.log("Create Spirits and Origin of Shell Collections...Done");
         console.log("Initialize Origin of Shell NFT sale inventory...");
         // set the initial inventory numbers that will be used until the preorder phase
-        await khalaApi.tx.pwNftSale.initRarityTypeCounts()
-            .signAndSend(overlord, {nonce: nonceOverlord++});
+        const unsub8 = await khalaApi.tx.pwNftSale.initRarityTypeCounts()
+            .signAndSend(overlord, {nonce: nonceOverlord++}, (result) => {
+                if (result.status.isInBlock) {
+                    console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+                } else if (result.status.isFinalized) {
+                    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+                    unsub8();
+                    resolve();
+                }
+            });
         await waitTxAccepted(khalaApi, overlord.address, nonceOverlord - 1);
         console.log("Initialize Origin of Shell NFT sale inventory...Done");
     });
@@ -132,21 +215,15 @@ async function main() {
     const charlie = keyring.addFromUri(charliePrivkey);
     const david = keyring.addFromUri(davidPrivkey);
     const eve = keyring.addFromUri(evePrivkey);
-    let nonceAlice = await getNonce(alice.address);
-    let nonceBob = await getNonce(bob.address);
-    let nonceCharlie = await getNonce(charlie.address);
-    let nonceDavid = await getNonce(david.address);
-    let nonceEve = await getNonce(eve.address);
-    let nonceFerdie = await getNonce(ferdie.address);
-    let nonceOverlord = await getNonce(overlord.address);
     const userAccounts = [overlord, bob, charlie, david, eve, ferdie];
 
     // Send PHA to Account from Alice
-    await transferPha(api, alice, nonceAlice, userAccounts, token(20_000));
-
+    await transferPha(api, alice, userAccounts, token(20_000));
     // Set Overlord account
-    await setOverlordAccount(api, alice, nonceAlice, overlord);
+    await setOverlordAccount(api, alice, overlord);
 
     // Initialize Phala World
-    await initPhalaWorld(api, overlord, nonceOverlord);
+    await initPhalaWorld(api, overlord);
 }
+
+main().catch(console.error).finally(() => process.exit());
