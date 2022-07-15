@@ -248,4 +248,33 @@ async function main() {
         await api.tx.pwIncubation.updateIncubationTime(topTenFed).signAndSend(overlord, { nonce: nonceOverlord++ });
     }
 
+    // Add a Basic Resource to an NFT
+    {
+        const spiritCollectionId = await api.query.pwNftSale.spiritCollectionId();
+        if (spiritCollectionId.isSome) {
+            console.log(`Adding Basic Resource...`);
+            await api.tx.rmrkCore.addBasicResource(spiritCollectionId.unwrap(), 0, {
+                'src': null,
+                'metadata': 'ar://YV4TWufBJZtpRc-7BkgzvaM7eN2Y5xZcZ3uFbplN-L4',
+                'license': null,
+                'thumb': null
+            }).signAndSend(overlord)
+            console.log(`Adding Basic Resource...Done`);
+            const pendingResource = await api.query.rmrkCore.resources(spiritCollectionId.unwrap(), 0, 0)
+            console.log(`Resource Added: ${pendingResource}`)
+        }
+    }
+
+    // Accept a Resource that was added to an NFT
+    {
+        const spiritCollectionId = await api.query.pwNftSale.spiritCollectionId();
+        if (spiritCollectionId.isSome) {
+            console.log(`Accepting Basic Resource...`);
+            await api.tx.rmrkCore.acceptResource(spiritCollectionId.unwrap(), 0, 0).signAndSend(alice)
+            console.log(`Accepting Basic Resource...Done`);
+            const pendingResource = await api.query.rmrkCore.resources(spiritCollectionId.unwrap(), 0, 0)
+            console.log(`Resource Added: ${pendingResource}`)
+        }
+    }
+
 }
