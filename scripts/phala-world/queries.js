@@ -104,15 +104,15 @@ async function main() {
     {
         const originOfShellCollectionId = await api.query.pwNftSale.originOfShellCollectionId();
         if (originOfShellCollectionId.isSome) {
-
+            const originOfShells = await api.query.rmrkCore.nfts.entries(originOfShellCollectionId.unwrap());
             originOfShells
-                .map(([key, _value]) =>
-                    [key.args[0].toString(), key.args[1].toNumber(), key.args[2].toNumber()]
-                ).forEach(([account, collectionId, nftId]) => {
+                .map(([key, value]) =>
+                    [key.args[0].toNumber(), key.args[1].toNumber(), value.toHuman()]
+                ).forEach(([collectionId, nftId, nftInfo]) => {
                 console.log({
-                    account,
                     collectionId,
                     nftId,
+                    nftInfo,
                 })
             })
         } else {
@@ -201,17 +201,21 @@ async function main() {
     //      }
     // }
     {
-        const userPreorderResults = await api.query.pwNftSale.preorderResults.entries(ferdie.address);
-        userPreorderResults
-            .map(([key, value]) =>
-                [key.args[0].toString(), key.args[1].toNumber(), value.toHuman()]
-            ).forEach(([account, preorderId, preorderInfo]) => {
-            console.log({
-                account,
-                preorderId,
-                preorderInfo,
-            })
-        })
+        async function getPreordersByOwner(khalaApi, owner) {
+            const preorderIndex = await api.query.pwNftSale.preorderIndex();
+            console.log(`Current preorder index: ${preorderIndex}`);
+            const preorderKeys = await api.query.pwNftSale.preorders.entries();
+            for(const preorder in preorderKeys) {
+                const preorderInfo = await api.query.pwNftSale.preorders(preorder);
+                if (preorderInfo.isSome) {
+                    const preorderInfoVal = preorderInfo.unwrap();
+                    if (preorderInfoVal.owner.eq(owner)) {
+                        console.log(preorderInfoVal.toHuman());
+                    }
+                }
+            }
+        }
+        await getPreordersByOwner(api, '43qxXkmiThNSx1DXm2YdfPe6jioBBEELRFNnbgZGwgZeei8X');
     }
 
 
@@ -312,17 +316,58 @@ async function main() {
     }
     // Get total feeding stats for a NFT
     {
-        const collectionId = 1;
-        const nftId = 0;
-        let currentEraQuery = await api.query.pwNftSale.era();
-        let currentEra = currentEraQuery.toNumber();
-        console.log(`Current Era: ${currentEra}`);
-        let totalFed = 0;
-        for (currentEra; currentEra >= 0; currentEra--) {
-            const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats(currentEra, [collectionId, nftId]);
-            totalFed += originOfShellFoodStats.toNumber()
+        async function getOriginOfShellTotalFed(khalaApi, collectionId, nftId) {
+            let totalFed = 0;
+            let currentEraQuery = await api.query.pwNftSale.era();
+            let currentEra = currentEraQuery.toNumber();
+            for (currentEra; currentEra >= 0; currentEra--) {
+                const originOfShellFoodStats = await api.query.pwIncubation.originOfShellFoodStats(currentEra, [collectionId, nftId]);
+                totalFed += originOfShellFoodStats.toNumber()
+            }
+            console.log(`Total Fed: ${totalFed}`);
         }
-        console.log(`Total Fed: ${totalFed}`);
+
+        await getOriginOfShellTotalFed(api, 1, 1);
+    }
+
+    // Filter on attributes & display NFTs
+    {
+        async function filterOriginShellsByAttribute(khalaApi, attrType, attrKey, attrValue) {
+            let nftIdsArr = [];
+            const originOfShellCollectionId = await api.query.pwNftSale.originOfShellCollectionId();
+            if (originOfShellCollectionId.isSome) {
+                const nextNftId = await khalaApi.query.rmrkCore.nextNftId(originOfShellCollectionId.unwrap());
+                for (let nftId = 0; nftId < nextNftId; nftId++) {
+                    const actualAttr = await khalaApi.query.uniques.attribute(originOfShellCollectionId.unwrap(), nftId, attrKey);
+                    // attrType examples: PalletPhalaWorldRarityType, PalletPhalaWorldRaceType, PalletPhalaWorldCareerType
+                    const actualAttrValue = khalaApi.createType(attrType, actualAttr.unwrap()[0]);
+                    const expectedAttrValue = khalaApi.createType(attrType, attrValue);
+                    let isCorrectAttr = actualAttrValue.eq(expectedAttrValue);
+                    console.log(`Is filtered type ${attrType} key ${attrKey} value ${expectedAttrValue} equal to actual key value ${actualAttrValue}: ${isCorrectAttr}`);
+                    if (isCorrectAttr) {
+                        nftIdsArr.push(nftId);
+                    }
+                }
+
+            }
+            console.log(`NFTs with ${attrType}:${attrKey}:${attrValue} are ${nftIdsArr}`);
+            return nftIdsArr
+        }
+
+        async function displayFilteredNftArray(khalaApi, collectionId, nftIdsArr) {
+            for(const nftId in nftIdsArr) {
+                const originOfShell = await khalaApi.query.rmrkCore.nfts(collectionId, nftId);
+                if (originOfShell.isSome) {
+                    console.log(originOfShell.unwrap().toHuman());
+                }
+            }
+        }
+
+        let nftIdsArr = await filterOriginShellsByAttribute(api, 'PalletPhalaWorldRarityType', 'rarity', 'Legendary');
+        const originOfShellCollectionId = await api.query.pwNftSale.originOfShellCollectionId();
+        if (originOfShellCollectionId.isSome) {
+            await displayFilteredNftArray(api, originOfShellCollectionId.unwrap(), nftIdsArr);
+        }
     }
 
 }
