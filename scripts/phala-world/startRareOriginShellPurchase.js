@@ -114,13 +114,13 @@ async function main() {
 
     const keyring = new Keyring({type: 'sr25519'});
 
-    const alice = keyring.addFromUri('//Alice');
-    const bob = keyring.addFromUri('//Bob');
-    const ferdie = keyring.addFromUri('//Ferdie');
-    const overlord = keyring.addFromUri('merge almost index garbage agent bracket layer skirt boss fly credit deal');
-    const charlie = keyring.addFromUri('//Charlie');
-    const david = keyring.addFromUri('//Dave');
-    const eve = keyring.addFromUri('//Eve');
+    const alice = keyring.addFromUri(alicePrivkey);
+    const bob = keyring.addFromUri(bobPrivkey);
+    const ferdie = keyring.addFromUri(ferdiePrivkey);
+    const overlord = keyring.addFromUri(overlordPrivkey);
+    const charlie = keyring.addFromUri(charliePrivkey);
+    const david = keyring.addFromUri(davidPrivkey);
+    const eve = keyring.addFromUri(evePrivkey);
     const userAccountsRareOriginOfShellInfo = [
         {'account': bob, 'rarity': 'Legendary', 'race': 'Cyborg', 'career': 'HackerWizard'},
         {'account': charlie, 'rarity': 'Magic', 'race': 'Pandroid', 'career': 'RoboWarrior'},
