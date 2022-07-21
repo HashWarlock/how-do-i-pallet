@@ -1,4 +1,5 @@
 require('dotenv').config();
+import "@polkadot/api-augment";
 const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
@@ -88,7 +89,7 @@ async function usersPurchaseWhitelistOriginOfShells(khalaApi, recipientsInfo) {
                     resolve();
                 }
             });
-            console.log(`[${index}]: Rare Origin of Shells purchases...DONE`);
+            console.log(`[${index}]: Prime Origin of Shells purchase...DONE`);
         }
     });
 }

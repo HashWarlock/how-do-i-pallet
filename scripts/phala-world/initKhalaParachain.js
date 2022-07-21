@@ -1,11 +1,12 @@
 require('dotenv').config();
+import "@polkadot/api-augment";
 const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 
 const alicePrivkey = process.env.ROOT_PRIVKEY;
 const bobPrivkey = process.env.USER_PRIVKEY;
-const overlordPrivkey = process.env.OVERLOAD_PRIVKEY;
+const overlordPrivkey = process.env.OVERLORD_PRIVKEY;
 const ferdiePrivkey = process.env.FERDIE_PRIVKEY;
 const charliePrivkey = process.env.CHARLIE_PRIVKEY;
 const davidPrivkey = process.env.DAVID_PRIVKEY;

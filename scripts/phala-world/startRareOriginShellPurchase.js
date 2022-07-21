@@ -1,11 +1,12 @@
 require('dotenv').config();
+import "@polkadot/api-augment";
 const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 
 const alicePrivkey = process.env.ROOT_PRIVKEY;
 const bobPrivkey = process.env.USER_PRIVKEY;
-const overlordPrivkey = process.env.OVERLOAD_PRIVKEY;
+const overlordPrivkey = process.env.OVERLORD_PRIVKEY;
 const ferdiePrivkey = process.env.FERDIE_PRIVKEY;
 const charliePrivkey = process.env.CHARLIE_PRIVKEY;
 const davidPrivkey = process.env.DAVID_PRIVKEY;
@@ -130,9 +131,9 @@ async function main() {
     // Add Metadata for Origin of Shell Races
     const originOfShellsMetadataArr = [['Cyborg', 'ar://BS-NUyJWDKJ-CwTYLWZz6TpG0CbWVKUAXvdPQu-KimI'], ['AISpectre', 'ar://KR3ZIIcc_Q6_47sibLOJ5YoFwJZqT6C7aJkkUYbUWbU'], ['Pandroid', 'ar://BS-NUyJWDKJ-CwTYLWZz6TpG0CbWVKUAXvdPQu-KimI'], ['XGene', 'ar://IzOXT_pER7487_RBpzGNOKNBGnDouN1mOcPXojE_Das']];
     await addOriginOfShellsMetadata(api, overlord, originOfShellsMetadataArr);
-    // Start Spirit Claims
+    // Start Rare Origin of Shell purchases
     await setStatusType(api, overlord, 'PurchaseRareOriginOfShells', true);
-    // Claim Spirits
+    // Purchase Rare Origin of Shell
     await usersPurchaseRareOriginOfShells(api, userAccountsRareOriginOfShellInfo);
 }
 
