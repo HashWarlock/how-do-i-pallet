@@ -1,5 +1,5 @@
 require('dotenv').config();
-import "@polkadot/api-augment";
+require("@polkadot/api-augment");
 const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
@@ -43,6 +43,46 @@ async function waitTxAccepted(khalaApi, account, nonce) {
     });
 }
 
+function waitExtrinsicFinished(khalaApi, extrinsic, account) {
+    return new Promise(async (resolve, reject) => {
+        const unsub = await extrinsic.signAndSend(account, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+            }
+
+            if (result.status.isInBlock || result.status.isFinalized) {
+                const failures = result.events.filter(({event}) => {
+                    return khalaApi.events.system?.ExtrinsicFailed?.is(event)
+                })
+                const errors = failures.map(
+                    ({
+                    event: {
+                        data: [error],
+                    },
+                    }) => {
+                        if (error?.isModule?.valueOf()) {
+                            // https://polkadot.js.org/docs/api/cookbook/tx#how-do-i-get-the-decoded-enum-for-an-extrinsicfailed-event
+                            const decoded = khalaApi.registry.findMetaError(error.asModule)
+                            const {docs, method, section} = decoded
+                            return new Error(`Extrinsic Failed: ${section}.${method}: ${docs.join(' ')}`)
+                        } else {
+                            return new Error(error?.toString() ?? String.toString.call(error))
+                        }
+                    }
+                )
+                if (errors.length > 0) {
+                    reject(errors[0])
+                } else {
+                    resolve()
+                }
+                unsub();
+            }
+        });
+    })
+}
+
 // Create Whitelist for account and sign with Overlord
 async function createWhitelistMessage(khalaApi, type, overlord, account) {
     const whitelistMessage = khalaApi.createType(type, {'account': account.address, 'purpose': 'BuyPrimeOriginOfShells'});
@@ -70,28 +110,21 @@ async function setStatusType(khalaApi, overlord, statusType, status) {
 }
 
 // Start rare origin of shells purchases
-async function usersPurchaseWhitelistOriginOfShells(khalaApi, recipientsInfo) {
-    return new Promise(async (resolve) => {
-        console.log(`Starting Whitelist Origin of Shells purchases...`);
-        for (const recipient of recipientsInfo) {
-            const index = recipientsInfo.indexOf(recipient);
-            const account = recipient.account;
-            const whitelistMessage = recipient.whitelistMessage;
-            const race = recipient.race;
-            const career = recipient.career;
-            console.log(`[${index}]: Purchasing Prime Origin of Shell for owner: ${account.address}, whitelistMessage: ${whitelistMessage}, race: ${race}, career: ${career}`);
-            const unsub = await khalaApi.tx.pwNftSale.buyPrimeOriginOfShell(whitelistMessage, race, career).signAndSend(account, (result) => {
-                if (result.status.isInBlock) {
-                    console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-                } else if (result.status.isFinalized) {
-                    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-                    unsub();
-                    resolve();
-                }
-            });
-            console.log(`[${index}]: Prime Origin of Shells purchase...DONE`);
-        }
-    });
+async function usersPurchaseWhitelistOriginOfShells(khalaApi, root, recipientsInfo) {
+    let nonceRoot = await getNonce(khalaApi, root.address);
+    console.log(`Starting Whitelist Origin of Shells purchases...`);
+    for (const recipient of recipientsInfo) {
+        const index = recipientsInfo.indexOf(recipient);
+        const account = recipient.account;
+        const whitelistMessage = recipient.whitelistMessage;
+        const race = recipient.race;
+        const career = recipient.career;
+        console.log(`[${index}]: Purchasing Prime Origin of Shell for owner: ${account.address}, whitelistMessage: ${whitelistMessage}, race: ${race}, career: ${career}`);
+        await khalaApi.tx.balances.transfer(account.address, token(501)).signAndSend(root, {nonce: nonceRoot++});
+        await waitTxAccepted(khalaApi, root.address, nonceRoot - 1);
+        await waitExtrinsicFinished(khalaApi, khalaApi.tx.pwNftSale.buyPrimeOriginOfShell(whitelistMessage, race, career), account);
+        console.log(`[${index}]: Prime Origin of Shells purchase...DONE`);
+    }
 }
 
 async function main() {
@@ -134,7 +167,7 @@ async function main() {
     // Enable Whitelist purchases
     await setStatusType(api, overlord, 'PurchasePrimeOriginOfShells', true);
     // Purchase Prime Origin of Shell
-    await usersPurchaseWhitelistOriginOfShells(api, userAccountsWhitelistOriginOfShellInfo);
+    await usersPurchaseWhitelistOriginOfShells(api, overlord, userAccountsWhitelistOriginOfShellInfo);
 }
 
 main().catch(console.error).finally(() => process.exit());
