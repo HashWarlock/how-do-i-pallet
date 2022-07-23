@@ -1,5 +1,5 @@
 require('dotenv').config();
-import "@polkadot/api-augment";
+require("@polkadot/api-augment");
 const BN = require('bn.js');
 const sleep = require('p-sleep');
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
@@ -43,6 +43,46 @@ async function waitTxAccepted(khalaApi, account, nonce) {
     });
 }
 
+function waitExtrinsicFinished(khalaApi, extrinsic, account) {
+    return new Promise(async (resolve, reject) => {
+        const unsub = await extrinsic.signAndSend(account, (result) => {
+            if (result.status.isInBlock) {
+                console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
+            } else if (result.status.isFinalized) {
+                console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
+            }
+
+            if (result.status.isInBlock || result.status.isFinalized) {
+                const failures = result.events.filter(({event}) => {
+                    return khalaApi.events.system?.ExtrinsicFailed?.is(event)
+                })
+                const errors = failures.map(
+                    ({
+                    event: {
+                        data: [error],
+                    },
+                    }) => {
+                        if (error?.isModule?.valueOf()) {
+                            // https://polkadot.js.org/docs/api/cookbook/tx#how-do-i-get-the-decoded-enum-for-an-extrinsicfailed-event
+                            const decoded = khalaApi.registry.findMetaError(error.asModule)
+                            const {docs, method, section} = decoded
+                            return new Error(`Extrinsic Failed: ${section}.${method}: ${docs.join(' ')}`)
+                        } else {
+                            return new Error(error?.toString() ?? String.toString.call(error))
+                        }
+                    }
+                )
+                if (errors.length > 0) {
+                    reject(errors[0])
+                } else {
+                    resolve()
+                }
+                unsub();
+            }
+        });
+    })
+}
+
 // Add Spirit Metadata
 async function addOriginOfShellsMetadata(khalaApi, overlord, originOfShellsMetadataArr) {
     let nonceOverlord = await getNonce(khalaApi, overlord.address);
@@ -83,28 +123,22 @@ async function setStatusType(khalaApi, overlord, statusType, status) {
 }
 
 // Start rare origin of shells purchases
-async function usersPurchaseRareOriginOfShells(khalaApi, recipientsInfo) {
-    return new Promise(async (resolve) => {
-        console.log(`Starting Rare Origin of Shells purchases...`);
-        for (const recipient of recipientsInfo) {
-            const index = recipientsInfo.indexOf(recipient);
-            const account = recipient.account;
-            const rarity = recipient.rarity;
-            const race = recipient.race;
-            const career = recipient.career;
-            console.log(`[${index}]: Purchasing Rare Origin of Shell for owner: ${account.address}, rarity: ${rarity}, race: ${race}, career: ${career}`);
-            const unsub = await khalaApi.tx.pwNftSale.buyRareOriginOfShell(rarity, race, career).signAndSend(account, (result) => {
-                if (result.status.isInBlock) {
-                    console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-                } else if (result.status.isFinalized) {
-                    console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-                    unsub();
-                    resolve();
-                }
-            });
-            console.log(`[${index}]: Rare Origin of Shells purchases...DONE`);
-        }
-    });
+async function usersPurchaseRareOriginOfShells(khalaApi, root, recipientsInfo) {
+    let nonceRoot = await getNonce(khalaApi, root.address);
+    console.log(`Starting Rare Origin of Shells purchases...`);
+    for (const recipient of recipientsInfo) {
+        const index = recipientsInfo.indexOf(recipient);
+        const account = recipient.account;
+        const rarity = recipient.rarity;
+        const race = recipient.race;
+        const career = recipient.career;
+        const amount = recipient.amount;
+        console.log(`[${index}]: Purchasing Rare Origin of Shell for owner: ${account.address}, rarity: ${rarity}, race: ${race}, career: ${career}, amount: ${amount}`);
+        await khalaApi.tx.balances.transfer(account.address, token(amount)).signAndSend(root, {nonce: nonceRoot++});
+        await waitTxAccepted(khalaApi, root.address, nonceRoot - 1);
+        await waitExtrinsicFinished(khalaApi, khalaApi.tx.pwNftSale.buyRareOriginOfShell(rarity, race, career), account);
+        console.log(`[${index}]: Rare Origin of Shells purchases...DONE`);
+    }
 }
 
 async function main() {
@@ -123,9 +157,9 @@ async function main() {
     const david = keyring.addFromUri(davidPrivkey);
     const eve = keyring.addFromUri(evePrivkey);
     const userAccountsRareOriginOfShellInfo = [
-        {'account': bob, 'rarity': 'Legendary', 'race': 'Cyborg', 'career': 'HackerWizard'},
-        {'account': charlie, 'rarity': 'Magic', 'race': 'Pandroid', 'career': 'RoboWarrior'},
-        {'account': david, 'rarity': 'Magic', 'race': 'XGene', 'career': 'TradeNegotiator'}
+        {'account': bob, 'rarity': 'Legendary', 'race': 'Cyborg', 'career': 'HackerWizard', 'amount': 15_001},
+        {'account': charlie, 'rarity': 'Magic', 'race': 'Pandroid', 'career': 'RoboWarrior', 'amount': 10_001},
+        {'account': david, 'rarity': 'Magic', 'race': 'XGene', 'career': 'TradeNegotiator', 'amount': 10_001}
     ];
 
     // Add Metadata for Origin of Shell Races
@@ -134,7 +168,7 @@ async function main() {
     // Start Rare Origin of Shell purchases
     await setStatusType(api, overlord, 'PurchaseRareOriginOfShells', true);
     // Purchase Rare Origin of Shell
-    await usersPurchaseRareOriginOfShells(api, userAccountsRareOriginOfShellInfo);
+    await usersPurchaseRareOriginOfShells(api, overlord, userAccountsRareOriginOfShellInfo);
 }
 
 main().catch(console.error).finally(() => process.exit());

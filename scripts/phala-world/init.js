@@ -5,7 +5,7 @@ const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 
 const rootPrivkey = process.env.ROOT_PRIVKEY;
 const userPrivkey = process.env.USER_PRIVKEY;
-const overlordPrivkey = process.env.OVERLOAD_PRIVKEY;
+const overlordPrivkey = process.env.OVERLORD_PRIVKEY;
 const endpoint = process.env.ENDPOINT;
 
 const bnUnit = new BN(1e12);
